@@ -1,0 +1,98 @@
+/* src/pages/Login.module.css */
+.page {
+  min-height:      100vh;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  background:      var(--color-gray-900);
+  padding:         var(--space-4);
+}
+
+.card {
+  width:         100%;
+  max-width:     400px;
+  background:    #fff;
+  border-radius: var(--radius-xl);
+  box-shadow:    var(--shadow-lg);
+  padding:       var(--space-8);
+}
+
+.header { text-align: center; margin-bottom: var(--space-8); }
+
+.logoMark {
+  font-size:   3rem;
+  line-height: 1;
+  margin-bottom: var(--space-4);
+}
+
+.title {
+  font-size:   var(--font-size-2xl);
+  font-weight: 700;
+  color:       var(--color-gray-900);
+  margin-bottom: var(--space-1);
+}
+
+.subtitle {
+  font-size: var(--font-size-sm);
+  color:     var(--color-gray-500);
+}
+
+.form { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.label {
+  font-size:   var(--font-size-sm);
+  font-weight: 500;
+  color:       var(--color-gray-700);
+}
+
+.input {
+  padding:       var(--space-3) var(--space-4);
+  border:        1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  font-size:     var(--font-size-base);
+  color:         var(--color-gray-800);
+  transition:    border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus {
+  outline:      none;
+  border-color: var(--color-primary);
+  box-shadow:   0 0 0 3px rgba(37,99,235,0.15);
+}
+
+.errorBox {
+  background:    var(--color-danger-light);
+  color:         var(--color-danger);
+  border:        1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  padding:       var(--space-3) var(--space-4);
+  font-size:     var(--font-size-sm);
+}
+
+.submitBtn {
+  padding:       var(--space-3);
+  background:    var(--color-primary);
+  color:         #fff;
+  border:        none;
+  border-radius: var(--radius-md);
+  font-size:     var(--font-size-base);
+  font-weight:   600;
+  cursor:        pointer;
+  transition:    background 0.15s;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  min-height:    48px;
+}
+.submitBtn:hover:not(:disabled) { background: var(--color-primary-hover); }
+.submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.spinner {
+  width: 20px; height: 20px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

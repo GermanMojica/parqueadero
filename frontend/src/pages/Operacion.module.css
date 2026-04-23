@@ -1,0 +1,273 @@
+/* src/pages/Operacion.module.css — Compartido entre Entrada.jsx y Salida.jsx */
+
+.page {
+  display:         flex;
+  justify-content: center;
+  padding-top:     var(--space-4);
+}
+
+/* ── Formulario ─────────────────────────────────────────────────────────── */
+.formCard {
+  width:         100%;
+  max-width:     520px;
+  background:    #fff;
+  border-radius: var(--radius-xl);
+  box-shadow:    var(--shadow-md);
+  border:        1px solid var(--color-gray-200);
+  padding:       var(--space-8);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--space-6);
+}
+
+.formHeader { border-bottom: 1px solid var(--color-gray-100); padding-bottom: var(--space-4); }
+.formTitle  { font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-gray-900); }
+.formSubtitle { font-size: var(--font-size-sm); color: var(--color-gray-500); margin-top: var(--space-1); }
+
+.form { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.label { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-gray-700); }
+
+.input {
+  padding:       var(--space-3) var(--space-4);
+  border:        1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  font-size:     var(--font-size-base);
+  color:         var(--color-gray-800);
+  transition:    border-color 0.15s, box-shadow 0.15s;
+  width:         100%;
+}
+.input:focus {
+  outline:      none;
+  border-color: var(--color-primary);
+  box-shadow:   0 0 0 3px rgba(37,99,235,0.15);
+}
+.inputError  { border-color: var(--color-danger) !important; }
+.fieldError  { font-size: var(--font-size-xs); color: var(--color-danger); }
+.errorBox {
+  background:    var(--color-danger-light);
+  border:        1px solid var(--color-danger);
+  color:         var(--color-danger);
+  border-radius: var(--radius-md);
+  padding:       var(--space-3) var(--space-4);
+  font-size:     var(--font-size-sm);
+}
+
+/* Tipos de vehículo como radio cards */
+.tiposGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-3); }
+
+.tipoOption {
+  border:        2px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  padding:       var(--space-4);
+  cursor:        pointer;
+  text-align:    center;
+  transition:    border-color 0.15s, background 0.15s;
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--space-2);
+}
+.tipoOption:hover:not(.tipoAgotado) { border-color: var(--color-primary); background: var(--color-primary-light); }
+.tipoSelected  { border-color: var(--color-primary) !important; background: var(--color-primary-light) !important; }
+.tipoAgotado   { opacity: 0.5; cursor: not-allowed; }
+.radioHidden   { display: none; }
+.tipoNombre    { font-weight: 600; font-size: var(--font-size-sm); color: var(--color-gray-800); }
+.tipoDisponibles { font-size: var(--font-size-xs); font-weight: 600; }
+
+.submitBtn {
+  padding:         var(--space-3) var(--space-6);
+  background:      var(--color-primary);
+  color:           #fff;
+  border:          none;
+  border-radius:   var(--radius-md);
+  font-size:       var(--font-size-base);
+  font-weight:     600;
+  cursor:          pointer;
+  transition:      background 0.15s;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--space-2);
+  min-height:      48px;
+}
+.submitBtn:hover:not(:disabled) { background: var(--color-primary-hover); }
+.submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.spinner {
+  width: 18px; height: 18px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Preview de cobro ───────────────────────────────────────────────────── */
+.previewCard {
+  border:        1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  overflow:      hidden;
+}
+.previewRow {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  padding:         var(--space-3) var(--space-4);
+  font-size:       var(--font-size-sm);
+  border-bottom:   1px solid var(--color-gray-100);
+}
+.previewRow:last-child { border-bottom: none; }
+.previewRow span  { color: var(--color-gray-500); }
+.previewRow strong { color: var(--color-gray-800); font-weight: 600; }
+
+.totalPreview {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  background:      var(--color-primary);
+  color:           #fff;
+  border-radius:   var(--radius-lg);
+  padding:         var(--space-4) var(--space-5);
+}
+.totalPreview span  { font-size: var(--font-size-sm); font-weight: 500; }
+.totalPreview strong { font-size: var(--font-size-2xl); font-weight: 700; }
+
+.previewNota {
+  font-size: var(--font-size-xs);
+  color:     var(--color-gray-400);
+  text-align: center;
+}
+
+.previewBtns { display: flex; gap: var(--space-3); }
+
+.btnCancelar {
+  flex:          1;
+  padding:       var(--space-3);
+  background:    var(--color-gray-100);
+  border:        1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  font-size:     var(--font-size-sm);
+  font-weight:   500;
+  cursor:        pointer;
+  transition:    background 0.15s;
+}
+.btnCancelar:hover { background: var(--color-gray-200); }
+
+/* ── Ticket ──────────────────────────────────────────────────────────────── */
+.ticketWrapper {
+  width:         100%;
+  max-width:     480px;
+  display:       flex;
+  flex-direction: column;
+  align-items:   center;
+  gap:           var(--space-5);
+}
+
+.ticketSuccess {
+  width:           64px;
+  height:          64px;
+  background:      var(--color-success);
+  color:           #fff;
+  border-radius:   50%;
+  font-size:       28px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-weight:     700;
+}
+
+.ticketTitle {
+  font-size:   var(--font-size-2xl);
+  font-weight: 700;
+  color:       var(--color-gray-900);
+}
+
+.ticket {
+  width:         100%;
+  background:    #fff;
+  border-radius: var(--radius-xl);
+  box-shadow:    var(--shadow-lg);
+  border:        1px solid var(--color-gray-200);
+  overflow:      hidden;
+}
+
+.ticketHeader {
+  display:     flex;
+  align-items: center;
+  gap:         var(--space-4);
+  padding:     var(--space-5) var(--space-6);
+  background:  var(--color-gray-900);
+  color:       #fff;
+}
+.ticketLogo   { font-size: 2rem; }
+.ticketCodigo { font-size: var(--font-size-lg); font-weight: 700; letter-spacing: 0.05em; }
+.ticketTipo   { font-size: var(--font-size-xs); color: var(--color-gray-400); margin-top: 2px; }
+
+.ticketGrid {
+  display:       grid;
+  grid-template-columns: 1fr 1fr;
+  gap:           0;
+  padding:       var(--space-4);
+}
+.ticketField {
+  padding:     var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--color-gray-100);
+  display:     flex;
+  flex-direction: column;
+  gap:         2px;
+}
+.ticketField span   { font-size: var(--font-size-xs); color: var(--color-gray-400); }
+.ticketField strong { font-size: var(--font-size-sm); color: var(--color-gray-800); font-weight: 600; }
+
+.totalCobro {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  padding:         var(--space-4) var(--space-6);
+  background:      var(--color-success-light);
+  border-top:      2px solid var(--color-success);
+}
+.totalCobro span   { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-success); }
+.totalCobro strong { font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-success); }
+
+.ticketNote {
+  text-align:  center;
+  font-size:   var(--font-size-xs);
+  color:       var(--color-gray-400);
+  padding:     var(--space-3) var(--space-6);
+  border-top:  1px dashed var(--color-gray-200);
+}
+
+.ticketActions { display: flex; gap: var(--space-3); width: 100%; }
+
+.btnPrint {
+  flex:          1;
+  padding:       var(--space-3);
+  background:    var(--color-gray-100);
+  border:        1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  font-size:     var(--font-size-sm);
+  font-weight:   600;
+  cursor:        pointer;
+}
+.btnPrint:hover { background: var(--color-gray-200); }
+
+.btnNuevo {
+  flex:          1;
+  padding:       var(--space-3);
+  background:    var(--color-primary);
+  color:         #fff;
+  border:        none;
+  border-radius: var(--radius-md);
+  font-size:     var(--font-size-sm);
+  font-weight:   600;
+  cursor:        pointer;
+}
+.btnNuevo:hover { background: var(--color-primary-hover); }
+
+@media print {
+  .ticketActions, .formCard, .pageHeader { display: none; }
+  .ticketWrapper { max-width: 100%; }
+}

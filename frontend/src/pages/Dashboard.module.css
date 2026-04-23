@@ -1,0 +1,146 @@
+/* src/pages/Dashboard.module.css */
+.page { display: flex; flex-direction: column; gap: var(--space-6); }
+
+.pageHeader {
+  display:     flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap:         var(--space-4);
+  flex-wrap:   wrap;
+}
+.title    { font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-gray-900); }
+.subtitle { font-size: var(--font-size-sm);  color: var(--color-gray-500); margin-top: var(--space-1); }
+
+.refreshBtn {
+  padding:       var(--space-2) var(--space-4);
+  background:    var(--color-gray-100);
+  border:        1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  font-size:     var(--font-size-sm);
+  font-weight:   500;
+  color:         var(--color-gray-700);
+  transition:    background 0.15s;
+}
+.refreshBtn:hover:not(:disabled) { background: var(--color-gray-200); }
+.refreshBtn:disabled { opacity: 0.6; cursor: wait; }
+
+.errorMsg {
+  background:    var(--color-warning-light);
+  color:         var(--color-warning);
+  border:        1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  padding:       var(--space-3) var(--space-4);
+  font-size:     var(--font-size-sm);
+}
+
+/* KPIs */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap:     var(--space-4);
+}
+.kpi {
+  background:    #fff;
+  border:        1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  padding:       var(--space-5) var(--space-4);
+  text-align:    center;
+  box-shadow:    var(--shadow-sm);
+}
+.kpiNum {
+  display:     block;
+  font-size:   var(--font-size-3xl);
+  font-weight: 700;
+  color:       var(--color-gray-900);
+  line-height: 1;
+}
+.kpiLabel {
+  display:    block;
+  font-size:  var(--font-size-xs);
+  color:      var(--color-gray-500);
+  margin-top: var(--space-2);
+  font-weight: 500;
+}
+
+.sectionTitle {
+  font-size:   var(--font-size-lg);
+  font-weight: 600;
+  color:       var(--color-gray-800);
+}
+
+/* Cards grid */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap:     var(--space-4);
+}
+
+.cupoCard {
+  background:    #fff;
+  border:        1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  padding:       var(--space-5);
+  box-shadow:    var(--shadow-sm);
+  display:       flex;
+  flex-direction: column;
+  gap:           var(--space-4);
+}
+
+.cupoHeader {
+  display:     flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cupoTipo { font-size: var(--font-size-lg); font-weight: 700; color: var(--color-gray-800); }
+.cuposPct { font-size: var(--font-size-xl); font-weight: 700; }
+
+.barTrack {
+  height:        10px;
+  background:    var(--color-gray-100);
+  border-radius: var(--radius-full);
+  overflow:      hidden;
+}
+.barFill {
+  height:        100%;
+  border-radius: var(--radius-full);
+  transition:    width 0.5s ease;
+}
+
+.cupoNums {
+  display: flex;
+  justify-content: space-between;
+}
+.cupoNum { text-align: center; }
+.numVal {
+  display:     block;
+  font-size:   var(--font-size-2xl);
+  font-weight: 700;
+  line-height: 1;
+}
+.numLabel {
+  display:    block;
+  font-size:  var(--font-size-xs);
+  color:      var(--color-gray-400);
+  margin-top: var(--space-1);
+}
+
+.mantenimiento {
+  font-size:   var(--font-size-xs);
+  color:       var(--color-warning);
+  background:  var(--color-warning-light);
+  padding:     var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.loadingState {
+  text-align:  center;
+  color:       var(--color-gray-400);
+  padding:     var(--space-12);
+  font-size:   var(--font-size-sm);
+}
+
+.updateNote {
+  font-size: var(--font-size-xs);
+  color:     var(--color-gray-400);
+  text-align: center;
+}
