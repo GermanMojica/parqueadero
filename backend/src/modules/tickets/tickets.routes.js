@@ -4,10 +4,10 @@ const ctrl       = require('./tickets.controller');
 const auth       = require('../../middlewares/auth.middleware');
 
 const router = Router();
-
 router.use(auth);
 
-router.get('/registro/:registroId',  ctrl.getByRegistro);
-router.get('/codigo/:codigo',        ctrl.getByCodigo);
+router.get('/registro/:registroId',      ctrl.getByRegistro);
+router.get('/registro/:registroId/qr',   ctrl.getQR);          // ?tipo=ENTRADA|SALIDA
+router.get('/codigo/:codigo',            ctrl.getByCodigo);
 
 module.exports = router;

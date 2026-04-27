@@ -1,8 +1,9 @@
-// src/pages/Salida.jsx
-import { useState }      from 'react';
-import { useRegistros }  from '../hooks/useRegistros';
+// src/pages/Salida.jsx — con PlacaInput validado y ticket con QR
+import { useState }       from 'react';
+import { useRegistros }   from '../hooks/useRegistros';
 import { useParqueadero } from '../context/ParqueaderoContext';
-import { normalizarPlaca, formatFecha, formatDuracion, formatMoneda } from '../utils/format.utils';
+import { PlacaInput }     from '../components/shared/PlacaInput';
+import { formatFecha, formatDuracion, formatMoneda } from '../utils/format.utils';
 import s from './Operacion.module.css';
 
 const STEP = { BUSCAR: 'BUSCAR', PREVIEW: 'PREVIEW', TICKET: 'TICKET' };
@@ -11,23 +12,24 @@ export default function Salida() {
   const { previewSalida, registrarSalida, loading, error, clearError } = useRegistros();
   const { refetch } = useParqueadero();
 
-  const [step,    setStep]    = useState(STEP.BUSCAR);
-  const [placa,   setPlaca]   = useState('');
-  const [preview, setPreview] = useState(null);
-  const [ticket,  setTicket]  = useState(null);
-  const [placaErr, setPlacaErr] = useState('');
+  const [step,      setStep]    = useState(STEP.BUSCAR);
+  const [placa,     setPlaca]   = useState('');
+  const [placaMeta, setPlacaMeta] = useState({ valida: false });
+  const [preview,   setPreview] = useState(null);
+  const [ticket,    setTicket]  = useState(null);
+
+  const handlePlacaChange = (val, meta) => {
+    setPlaca(val);
+    setPlacaMeta(meta);
+    clearError();
+  };
 
   const handleBuscar = async (e) => {
     e.preventDefault();
-    const p = normalizarPlaca(placa);
-    if (!p || !/^[A-Z0-9]{5,8}$/.test(p)) {
-      setPlacaErr('Ingresa una placa válida (ej: ABC123)');
-      return;
-    }
+    if (!placaMeta.valida) return;
     clearError();
-    setPlacaErr('');
     try {
-      const data = await previewSalida(p);
+      const data = await previewSalida(placa);
       setPreview(data);
       setStep(STEP.PREVIEW);
     } catch { /* error en hook */ }
@@ -36,7 +38,7 @@ export default function Salida() {
   const handleConfirmar = async () => {
     clearError();
     try {
-      const result = await registrarSalida({ placa: normalizarPlaca(placa) });
+      const result = await registrarSalida({ placa });
       setTicket(result);
       setStep(STEP.TICKET);
       refetch();
@@ -46,14 +48,16 @@ export default function Salida() {
   const handleNuevo = () => {
     setStep(STEP.BUSCAR);
     setPlaca('');
+    setPlacaMeta({ valida: false });
     setPreview(null);
     setTicket(null);
     clearError();
   };
 
-  // ── Ticket final ────────────────────────────────────────────────────────
+  // ── Ticket de salida con QR ──────────────────────────────────────────────
   if (step === STEP.TICKET && ticket) {
     const c = ticket.calculo;
+    const t = ticket.ticket;
     return (
       <div className={s.page}>
         <div className={s.ticketWrapper}>
@@ -64,21 +68,31 @@ export default function Salida() {
             <div className={s.ticketHeader}>
               <span className={s.ticketLogo}>🅿</span>
               <div>
-                <p className={s.ticketCodigo}>{ticket.ticket?.codigoTicket}</p>
+                <p className={s.ticketCodigo}>{t?.codigoTicket ?? `TK-SALIDA-${ticket.registroId}`}</p>
                 <p className={s.ticketTipo}>TICKET DE SALIDA</p>
               </div>
             </div>
-            <div className={s.ticketGrid}>
-              <div className={s.ticketField}><span>Placa</span><strong>{ticket.placa}</strong></div>
-              <div className={s.ticketField}><span>Espacio</span><strong>{ticket.espacio}</strong></div>
-              <div className={s.ticketField}><span>Entrada</span><strong>{formatFecha(c.horaEntrada)}</strong></div>
-              <div className={s.ticketField}><span>Salida</span><strong>{formatFecha(c.horaSalida)}</strong></div>
-              <div className={s.ticketField}><span>Duración</span><strong>{formatDuracion(c.minutosTotales)}</strong></div>
-              <div className={s.ticketField}><span>Tarifa/hora</span><strong>{formatMoneda(c.tarifaHora)}</strong></div>
+
+            <div className={s.ticketBodyQR}>
+              <div className={s.ticketGrid}>
+                <div className={s.ticketField}><span>Placa</span><strong>{ticket.placa}</strong></div>
+                <div className={s.ticketField}><span>Espacio</span><strong>{ticket.espacio}</strong></div>
+                <div className={s.ticketField}><span>Entrada</span><strong>{formatFecha(c.horaEntrada)}</strong></div>
+                <div className={s.ticketField}><span>Salida</span><strong>{formatFecha(c.horaSalida)}</strong></div>
+                <div className={s.ticketField}><span>Duración</span><strong>{formatDuracion(c.minutosTotales)}</strong></div>
+                <div className={s.ticketField}><span>Tarifa/h</span><strong>{formatMoneda(c.tarifaHora)}</strong></div>
+              </div>
+
+              {t?.qrDataURL && (
+                <div className={s.qrContainer}>
+                  <img src={t.qrDataURL} alt="QR salida" className={s.qrImg} />
+                  <p className={s.qrLabel}>Comprobante</p>
+                </div>
+              )}
             </div>
 
             <div className={s.totalCobro}>
-              <span>TOTAL A COBRAR</span>
+              <span>TOTAL COBRADO</span>
               <strong>{formatMoneda(c.totalCobrado)}</strong>
             </div>
 
@@ -94,7 +108,7 @@ export default function Salida() {
     );
   }
 
-  // ── Preview de cobro ────────────────────────────────────────────────────
+  // ── Preview de cobro ──────────────────────────────────────────────────────
   if (step === STEP.PREVIEW && preview) {
     const r = preview.registro;
     const c = preview.calculo;
@@ -108,44 +122,30 @@ export default function Salida() {
 
           {error && <div className={s.errorBox}>{error}</div>}
 
-          {/* Resumen del vehículo */}
           <div className={s.previewCard}>
-            <div className={s.previewRow}>
-              <span>Placa</span><strong>{r.placa}</strong>
-            </div>
-            <div className={s.previewRow}>
-              <span>Tipo</span><strong>{r.tipoVehiculo}</strong>
-            </div>
-            <div className={s.previewRow}>
-              <span>Espacio</span><strong>{r.espacio}</strong>
-            </div>
-            <div className={s.previewRow}>
-              <span>Entrada</span><strong>{formatFecha(r.horaEntrada)}</strong>
-            </div>
-            <div className={s.previewRow}>
-              <span>Tiempo aprox.</span><strong>{formatDuracion(c.minutosTotales)}</strong>
-            </div>
-            <div className={s.previewRow}>
-              <span>Tarifa/hora</span><strong>{formatMoneda(c.tarifaHora)}</strong>
-            </div>
-            <div className={s.previewRow}>
-              <span>Fracción mín.</span><strong>{c.fraccionMinutos} min</strong>
-            </div>
+            {[
+              ['Placa',     r.placa],
+              ['Tipo',      r.tipoVehiculo],
+              ['Espacio',   r.espacio],
+              ['Entrada',   formatFecha(r.horaEntrada)],
+              ['Tiempo aprox.', formatDuracion(c.minutosTotales)],
+              ['Tarifa/hora',   formatMoneda(c.tarifaHora)],
+              ['Fracción mín.', `${c.fraccionMinutos} min`],
+            ].map(([k, v]) => (
+              <div key={k} className={s.previewRow}>
+                <span>{k}</span><strong>{v}</strong>
+              </div>
+            ))}
           </div>
 
           <div className={s.totalPreview}>
             <span>COBRO ESTIMADO</span>
             <strong>{formatMoneda(c.totalEstimado)}</strong>
           </div>
-
-          <p className={s.previewNota}>
-            * El cobro final se calcula al momento exacto de confirmar
-          </p>
+          <p className={s.previewNota}>* El cobro final se calcula al momento exacto de confirmar</p>
 
           <div className={s.previewBtns}>
-            <button className={s.btnCancelar} onClick={handleNuevo} disabled={loading}>
-              ← Cancelar
-            </button>
+            <button className={s.btnCancelar} onClick={handleNuevo} disabled={loading}>← Cancelar</button>
             <button className={s.submitBtn} onClick={handleConfirmar} disabled={loading}>
               {loading ? <span className={s.spinner} /> : '✓ Confirmar y cobrar'}
             </button>
@@ -155,7 +155,7 @@ export default function Salida() {
     );
   }
 
-  // ── Búsqueda por placa ──────────────────────────────────────────────────
+  // ── Búsqueda por placa ────────────────────────────────────────────────────
   return (
     <div className={s.page}>
       <div className={s.formCard}>
@@ -169,19 +169,10 @@ export default function Salida() {
         <form onSubmit={handleBuscar} className={s.form} noValidate>
           <div className={s.field}>
             <label className={s.label}>Placa del vehículo</label>
-            <input
-              className={`${s.input} ${placaErr ? s.inputError : ''}`}
-              placeholder="ABC123"
-              value={placa}
-              onChange={(e) => { setPlacaErr(''); setPlaca(normalizarPlaca(e.target.value)); }}
-              maxLength={8}
-              style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '1.25rem', fontWeight: 600 }}
-              autoFocus
-            />
-            {placaErr && <span className={s.fieldError}>{placaErr}</span>}
+            <PlacaInput value={placa} onChange={handlePlacaChange} disabled={loading} autoFocus />
           </div>
 
-          <button type="submit" className={s.submitBtn} disabled={loading}>
+          <button type="submit" className={s.submitBtn} disabled={loading || !placaMeta.valida}>
             {loading ? <span className={s.spinner} /> : '🔍 Buscar vehículo'}
           </button>
         </form>

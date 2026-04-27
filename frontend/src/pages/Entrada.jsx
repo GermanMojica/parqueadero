@@ -1,67 +1,48 @@
-// src/pages/Entrada.jsx
-import { useState, useEffect }  from 'react';
-import { useRegistros }         from '../hooks/useRegistros';
-import { useParqueadero }       from '../context/ParqueaderoContext';
-import { espaciosApi }          from '../api/index';
-import { normalizarPlaca, formatFecha } from '../utils/format.utils';
+// src/pages/Entrada.jsx — con PlacaInput validado y ticket con QR
+import { useState, useEffect }    from 'react';
+import { useRegistros }           from '../hooks/useRegistros';
+import { useParqueadero }         from '../context/ParqueaderoContext';
+import { PlacaInput }             from '../components/shared/PlacaInput';
+import { formatFecha }            from '../utils/format.utils';
 import s from './Operacion.module.css';
-
-const TIPOS_INIT = [];
 
 export default function Entrada() {
   const { registrarEntrada, loading, error, clearError } = useRegistros();
   const { refetch, resumen }                             = useParqueadero();
 
-  const [tipos,   setTipos]   = useState(TIPOS_INIT);
-  const [form,    setForm]    = useState({ placa: '', tipoVehiculoId: '' });
-  const [errors,  setErrors]  = useState({});
-  const [ticket,  setTicket]  = useState(null);   // resultado exitoso
+  const [placa,       setPlaca]       = useState('');
+  const [placaMeta,   setPlacaMeta]   = useState({ valida: false });
+  const [tipoVId,     setTipoVId]     = useState('');
+  const [tipoError,   setTipoError]   = useState('');
+  const [ticket,      setTicket]      = useState(null);
 
-  // Cargar tipos de vehículo desde el resumen de disponibilidad
-  useEffect(() => {
-    if (resumen.length) setTipos(resumen);
-  }, [resumen]);
+  const cuposDisponibles = (id) =>
+    resumen.find(t => t.id === Number(id))?.disponibles ?? '—';
 
-  const cuposDisponibles = (tipoId) =>
-    tipos.find(t => t.id === Number(tipoId))?.disponibles ?? '—';
-
-  const validate = () => {
-    const e = {};
-    if (!form.placa.trim()) e.placa = 'La placa es requerida';
-    else if (!/^[A-Z0-9]{5,8}$/.test(normalizarPlaca(form.placa))) e.placa = 'Formato inválido (ej: ABC123)';
-    if (!form.tipoVehiculoId) e.tipoVehiculoId = 'Selecciona el tipo de vehículo';
-    else if (cuposDisponibles(form.tipoVehiculoId) === 0) e.tipoVehiculoId = 'No hay cupos disponibles';
-    return e;
-  };
-
-  const handleChange = (e) => {
+  const handlePlacaChange = (val, meta) => {
+    setPlaca(val);
+    setPlacaMeta(meta);
     clearError();
-    setErrors(prev => ({ ...prev, [e.target.name]: '' }));
-    const val = e.target.name === 'placa'
-      ? normalizarPlaca(e.target.value)
-      : e.target.value;
-    setForm(prev => ({ ...prev, [e.target.name]: val }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
+    if (!placaMeta.valida) return;
+    if (!tipoVId) { setTipoError('Selecciona el tipo de vehículo'); return; }
+    if (cuposDisponibles(tipoVId) === 0) { setTipoError('No hay cupos disponibles'); return; }
+    setTipoError('');
     try {
-      const result = await registrarEntrada({
-        placa:          form.placa,
-        tipoVehiculoId: Number(form.tipoVehiculoId),
-      });
+      const result = await registrarEntrada({ placa, tipoVehiculoId: Number(tipoVId) });
       setTicket(result);
-      setForm({ placa: '', tipoVehiculoId: '' });
-      refetch(); // actualiza cupos en sidebar
-    } catch { /* error ya en hook */ }
+      setPlaca('');
+      setTipoVId('');
+      refetch();
+    } catch { /* error en hook */ }
   };
 
   const handleNuevo = () => { setTicket(null); clearError(); };
 
-  // ── Vista ticket ─────────────────────────────────────────────────────────
+  // ── Ticket con QR ────────────────────────────────────────────────────────
   if (ticket) {
     const t = ticket.ticket;
     return (
@@ -78,13 +59,29 @@ export default function Entrada() {
                 <p className={s.ticketTipo}>TICKET DE ENTRADA</p>
               </div>
             </div>
-            <div className={s.ticketGrid}>
-              <div className={s.ticketField}><span>Placa</span><strong>{t.registro.placa}</strong></div>
-              <div className={s.ticketField}><span>Espacio</span><strong>{t.espacio.codigo}</strong></div>
-              <div className={s.ticketField}><span>Tipo</span><strong>{t.tipoVehiculo}</strong></div>
-              <div className={s.ticketField}><span>Hora entrada</span><strong>{formatFecha(t.registro.horaEntrada)}</strong></div>
-              <div className={s.ticketField}><span>Operador</span><strong>{t.operador.nombre}</strong></div>
+
+            {/* Cuerpo: campos + QR lado a lado */}
+            <div className={s.ticketBodyQR}>
+              <div className={s.ticketGrid}>
+                <div className={s.ticketField}><span>Placa</span><strong>{t.registro.placa}</strong></div>
+                <div className={s.ticketField}><span>Espacio</span><strong>{t.espacio.codigo}</strong></div>
+                <div className={s.ticketField}><span>Tipo</span><strong>{t.tipoVehiculo}</strong></div>
+                <div className={s.ticketField}><span>Hora entrada</span><strong>{formatFecha(t.registro.horaEntrada)}</strong></div>
+                <div className={s.ticketField}><span>Operador</span><strong>{t.operador.nombre}</strong></div>
+                {t.qrPayload?.pais && t.qrPayload.pais !== 'CO' && (
+                  <div className={s.ticketField}><span>País placa</span><strong>{t.qrPayload.pais}</strong></div>
+                )}
+              </div>
+
+              {/* QR image */}
+              {t.qrDataURL && (
+                <div className={s.qrContainer}>
+                  <img src={t.qrDataURL} alt="QR ticket" className={s.qrImg} />
+                  <p className={s.qrLabel}>Escanear para salida</p>
+                </div>
+              )}
             </div>
+
             <p className={s.ticketNote}>Conserve este tiquete para reclamar su vehículo</p>
           </div>
 
@@ -97,7 +94,7 @@ export default function Entrada() {
     );
   }
 
-  // ── Vista formulario ──────────────────────────────────────────────────────
+  // ── Formulario ────────────────────────────────────────────────────────────
   return (
     <div className={s.page}>
       <div className={s.formCard}>
@@ -109,41 +106,38 @@ export default function Entrada() {
         {error && <div className={s.errorBox}>{error}</div>}
 
         <form onSubmit={handleSubmit} className={s.form} noValidate>
-          {/* Placa */}
+          {/* PlacaInput inteligente */}
           <div className={s.field}>
             <label className={s.label}>Placa del vehículo</label>
-            <input
-              name="placa"
-              className={`${s.input} ${errors.placa ? s.inputError : ''}`}
-              placeholder="ABC123"
-              value={form.placa}
-              onChange={handleChange}
-              maxLength={8}
-              style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '1.25rem', fontWeight: 600 }}
+            <PlacaInput
+              value={placa}
+              onChange={handlePlacaChange}
+              disabled={loading}
               autoFocus
             />
-            {errors.placa && <span className={s.fieldError}>{errors.placa}</span>}
           </div>
 
-          {/* Tipo vehículo */}
+          {/* Tipo de vehículo */}
           <div className={s.field}>
             <label className={s.label}>Tipo de vehículo</label>
             <div className={s.tiposGrid}>
-              {tipos.map(tipo => (
+              {resumen.map(tipo => (
                 <label
                   key={tipo.id}
-                  className={`${s.tipoOption} ${form.tipoVehiculoId == tipo.id ? s.tipoSelected : ''} ${tipo.disponibles === 0 ? s.tipoAgotado : ''}`}
+                  className={`${s.tipoOption} ${tipoVId == tipo.id ? s.tipoSelected : ''} ${tipo.disponibles === 0 ? s.tipoAgotado : ''}`}
                 >
                   <input
                     type="radio"
-                    name="tipoVehiculoId"
+                    name="tipoVId"
                     value={tipo.id}
-                    checked={form.tipoVehiculoId == tipo.id}
-                    onChange={handleChange}
+                    checked={tipoVId == tipo.id}
+                    onChange={e => { setTipoVId(e.target.value); setTipoError(''); }}
                     disabled={tipo.disponibles === 0}
                     className={s.radioHidden}
                   />
-                  <span className={s.tipoNombre}>{tipo.tipo_vehiculo}</span>
+                  <span className={s.tipoNombre}>
+                    {tipo.tipo_vehiculo === 'MOTO' ? '🏍' : tipo.tipo_vehiculo === 'CAMIONETA' ? '🚙' : '🚗'} {tipo.tipo_vehiculo}
+                  </span>
                   <span className={s.tipoDisponibles} style={{
                     color: tipo.disponibles === 0 ? 'var(--color-danger)'
                          : tipo.disponibles <= 3  ? 'var(--color-warning)'
@@ -154,10 +148,14 @@ export default function Entrada() {
                 </label>
               ))}
             </div>
-            {errors.tipoVehiculoId && <span className={s.fieldError}>{errors.tipoVehiculoId}</span>}
+            {tipoError && <span className={s.fieldError}>{tipoError}</span>}
           </div>
 
-          <button type="submit" className={s.submitBtn} disabled={loading}>
+          <button
+            type="submit"
+            className={s.submitBtn}
+            disabled={loading || !placaMeta.valida || !tipoVId}
+          >
             {loading ? <span className={s.spinner} /> : '↓ Registrar entrada'}
           </button>
         </form>

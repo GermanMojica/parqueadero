@@ -2,14 +2,28 @@
 // ⚠️  CAPA CRÍTICA — Aquí viven las reglas de negocio RN-01 a RN-06
 // Toda operación de entrada/salida ocurre dentro de transacciones MySQL.
 
-const { withTransaction } = require('../../config/db');
-const registrosRepo       = require('./registros.repository');
-const espaciosRepo        = require('../espacios/espacios.repository');
-const tarifasRepo         = require('../tarifas/tarifas.repository');
-const ticketsRepo         = require('../tickets/tickets.repository');
-const { calcularTarifa, calcularTarifaPreliminar } = require('../../utils/tarifa.calculator');
+const { withTransaction, pool } = require('../../config/db');
+const registrosRepo        = require('./registros.repository');
+const espaciosRepo         = require('../espacios/espacios.repository');
+const tarifasRepo          = require('../tarifas/tarifas.repository');
+const ticketsRepo          = require('../tickets/tickets.repository');
+const auditoriaRepo        = require('../auditoria/auditoria.repository');
+const { calcularTarifaConTramos, calcularTarifaPreliminar } = require('../../utils/tarifa.calculator');
 const { buildTicketEntrada, buildTicketSalida, generarCodigoTicket } = require('../../utils/ticket.generator');
-const AppError            = require('../../utils/AppError');
+const AppError             = require('../../utils/AppError');
+
+// Carga tarifas especiales activas (se cachea 5 min para no hacer query en cada operación)
+let _tarifasEspecialesCache = null;
+let _cacheTs = 0;
+async function _getTarifasEspeciales() {
+  if (_tarifasEspecialesCache && Date.now() - _cacheTs < 5 * 60_000) return _tarifasEspecialesCache;
+  const [rows] = await pool.execute(
+    'SELECT * FROM tarifas_especiales WHERE activo = 1',
+  );
+  _tarifasEspecialesCache = rows;
+  _cacheTs = Date.now();
+  return rows;
+}
 
 // ─── REGISTRAR ENTRADA ────────────────────────────────────────────────────────
 async function registrarEntrada({ placa, tipoVehiculoId, usuarioId }) {
@@ -54,8 +68,8 @@ async function registrarEntrada({ placa, tipoVehiculoId, usuarioId }) {
     );
     const registro = rows[0];
 
-    // Generar ticket de entrada
-    const datosTicket = buildTicketEntrada({
+    // Generar ticket de entrada (async — genera QR)
+    const datosTicket = await buildTicketEntrada({
       registro,
       espacio:      { id: espacio.id, codigo: espacio.codigo },
       tipoVehiculo: { nombre: registro.tipo_vehiculo },
@@ -68,6 +82,15 @@ async function registrarEntrada({ placa, tipoVehiculoId, usuarioId }) {
       codigoTicket,
       tipo: 'ENTRADA',
       datosJson: datosTicket,
+    }, conn);
+
+    // Log de auditoría (no falla la transacción si falla el log)
+    await auditoriaRepo.log({
+      usuarioId: usuarioId,
+      accion:    'ENTRADA',
+      entidad:   'registros',
+      entidadId: registroId,
+      detalle:   { placa: placa.toUpperCase(), espacio: espacio.codigo, tipoVehiculoId },
     }, conn);
 
     return { registroId, espacio: espacio.codigo, ticket: datosTicket };
@@ -129,13 +152,18 @@ async function registrarSalida({ placa, usuarioId }) {
       throw new AppError('No existe tarifa configurada para este tipo de vehículo', 500);
     }
 
-    // Cálculo final de cobro
-    const calculo = calcularTarifa(
-      registro.hora_entrada,
+    // Cargar tarifas especiales para cálculo por tramos
+    const tarifasEspeciales = await _getTarifasEspeciales();
+    const teDelTipo = tarifasEspeciales.filter(te => te.tipo_vehiculo_id === registro.tipo_vehiculo_id);
+
+    // Cálculo final de cobro con soporte de tramos horarios
+    const calculo = calcularTarifaConTramos({
+      horaEntrada:       registro.hora_entrada,
       horaSalida,
-      tarifa.precio_hora,
-      tarifa.fraccion_minutos,
-    );
+      precioHoraBase:    tarifa.precio_hora,
+      fraccionMinutos:   tarifa.fraccion_minutos,
+      tarifasEspeciales: teDelTipo,
+    });
 
     // RN-04: Cierre atómico — todo o nada
     // 1. Cerrar registro con snapshot de tarifa
@@ -152,8 +180,8 @@ async function registrarSalida({ placa, usuarioId }) {
     // 2. Liberar el espacio
     await espaciosRepo.setEstado(registro.espacio_id, 'DISPONIBLE', conn);
 
-    // 3. Generar ticket de salida
-    const datosTicket = buildTicketSalida({
+    // 3. Generar ticket de salida (async — genera QR)
+    const datosTicket = await buildTicketSalida({
       registro: { ...registro, hora_salida: horaSalida },
       espacio:      { id: registro.espacio_id, codigo: registro.espacio_codigo },
       tipoVehiculo: { nombre: registro.tipo_vehiculo },
@@ -168,6 +196,20 @@ async function registrarSalida({ placa, usuarioId }) {
       codigoTicket,
       tipo:        'SALIDA',
       datosJson:   datosTicket,
+    }, conn);
+
+    // Log de auditoría
+    await auditoriaRepo.log({
+      usuarioId,
+      accion:    'SALIDA',
+      entidad:   'registros',
+      entidadId: registro.id,
+      detalle: {
+        placa:          registro.placa,
+        minutos:        calculo.minutosTotales,
+        total:          calculo.total,
+        tarifaEspecial: calculo.tarifaEspecialAplicada,
+      },
     }, conn);
 
     return {

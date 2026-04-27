@@ -10,4 +10,11 @@ async function getByCodigo(req, res, next) {
   try { ok(res, await service.getByCodigo(req.params.codigo)); } catch (e) { next(e); }
 }
 
-module.exports = { getByRegistro, getByCodigo };
+async function getQR(req, res, next) {
+  try {
+    ok(res, await service.getQR(Number(req.params.registroId), req.query.tipo || 'ENTRADA'));
+  } catch (e) { next(e); }
+}
+
+module.exports = { getByRegistro, getByCodigo, getQR };
+

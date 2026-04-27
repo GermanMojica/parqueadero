@@ -8,12 +8,15 @@ const errorMiddleware  = require('./middlewares/error.middleware');
 const logger           = require('./utils/logger');
 
 // Rutas
-const authRoutes      = require('./modules/auth/auth.routes');
-const usuariosRoutes  = require('./modules/usuarios/usuarios.routes');
-const espaciosRoutes  = require('./modules/espacios/espacios.routes');
-const registrosRoutes = require('./modules/registros/registros.routes');
-const tarifasRoutes   = require('./modules/tarifas/tarifas.routes');
-const ticketsRoutes   = require('./modules/tickets/tickets.routes');
+const authRoutes       = require('./modules/auth/auth.routes');
+const usuariosRoutes   = require('./modules/usuarios/usuarios.routes');
+const espaciosRoutes   = require('./modules/espacios/espacios.routes');
+const registrosRoutes  = require('./modules/registros/registros.routes');
+const tarifasRoutes    = require('./modules/tarifas/tarifas.routes');
+const ticketsRoutes    = require('./modules/tickets/tickets.routes');
+const descuentosRoutes = require('./modules/descuentos/descuentos.routes');
+const reportesRoutes   = require('./modules/reportes/reportes.routes');
+const auditoriaRoutes  = require('./modules/auditoria/auditoria.routes');
 
 const app = express();
 
@@ -37,12 +40,15 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ── Rutas del dominio ───────────────────────────────────────────────────────
-app.use('/api/auth',      authRoutes);
-app.use('/api/usuarios',  usuariosRoutes);
-app.use('/api/espacios',  espaciosRoutes);
-app.use('/api/registros', registrosRoutes);
-app.use('/api/tarifas',   tarifasRoutes);
-app.use('/api/tickets',   ticketsRoutes);
+app.use('/api/auth',       authRoutes);
+app.use('/api/usuarios',   usuariosRoutes);
+app.use('/api/espacios',   espaciosRoutes);
+app.use('/api/registros',  registrosRoutes);
+app.use('/api/tarifas',    tarifasRoutes);
+app.use('/api/tickets',    ticketsRoutes);
+app.use('/api/descuentos', descuentosRoutes);
+app.use('/api/reportes',   reportesRoutes);
+app.use('/api/auditoria',  auditoriaRoutes);
 
 // ── Ruta no encontrada ──────────────────────────────────────────────────────
 app.use((_req, res) => {

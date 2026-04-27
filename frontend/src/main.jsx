@@ -1,7 +1,6 @@
-// src/main.jsx
 import React    from 'react';
+import './index.css';   // ← esta línea debe estar
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import AppRouter from './router/AppRouter';
 import { AuthProvider }        from './context/AuthContext';
 import { ParqueaderoProvider } from './context/ParqueaderoContext';
