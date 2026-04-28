@@ -1,96 +1,125 @@
-// src/components/layout/Layout.jsx
-import { useState }           from 'react';
+// Layout.jsx
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth }            from '../../context/AuthContext';
-import { useParqueadero }     from '../../context/ParqueaderoContext';
+import { useAuth }          from '../../context/AuthContext';
+import { useParqueadero }   from '../../context/ParqueaderoContext';
 import s from './Layout.module.css';
 
-const NAV_ITEMS = [
+const NAV = [
+  { section: 'Operación' },
   { to: '/dashboard', label: 'Dashboard',      icon: '⊞', roles: ['ADMIN','OPERADOR'] },
   { to: '/entrada',   label: 'Registrar Entrada', icon: '↓', roles: ['ADMIN','OPERADOR'] },
   { to: '/salida',    label: 'Registrar Salida',  icon: '↑', roles: ['ADMIN','OPERADOR'] },
-  { to: '/escaner',   label: 'Escáner QR',      icon: '📷', roles: ['ADMIN','OPERADOR'] },
-  { to: '/mapa',      label: 'Mapa',            icon: '⊡', roles: ['ADMIN','OPERADOR'] },
+  { to: '/escaner',   label: 'Escáner QR',      icon: '▦', roles: ['ADMIN','OPERADOR'] },
+  { to: '/mapa',      label: 'Mapa',            icon: '◫', roles: ['ADMIN','OPERADOR'] },
+  { section: 'Reportes' },
   { to: '/registros', label: 'Historial',       icon: '☰', roles: ['ADMIN','OPERADOR'] },
+  { section: 'Admin' },
   { to: '/tarifas',   label: 'Tarifas',         icon: '$', roles: ['ADMIN'] },
-  { to: '/usuarios',  label: 'Usuarios',        icon: '👤', roles: ['ADMIN'] },
+  { to: '/usuarios',  label: 'Usuarios',        icon: '◉', roles: ['ADMIN'] },
 ];
 
 export function Layout({ children }) {
   const { usuario, isAdmin, logout } = useAuth();
   const { resumen }                  = useParqueadero();
   const navigate                     = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [open, setOpen]              = useState(false);
 
-  const totalDisponibles = resumen.reduce((a, r) => a + (r.disponibles ?? 0), 0);
-  const totalOcupados    = resumen.reduce((a, r) => a + (r.ocupados    ?? 0), 0);
-  const pctOcup          = (totalDisponibles + totalOcupados) > 0
-    ? Math.round((totalOcupados / (totalDisponibles + totalOcupados)) * 100)
-    : 0;
+  const disponibles = resumen.reduce((a, r) => a + (r.disponibles ?? 0), 0);
+  const ocupados    = resumen.reduce((a, r) => a + (r.ocupados    ?? 0), 0);
+  const total       = resumen.reduce((a, r) => a + (r.capacidad_total ?? 0), 0);
+  const pct         = total > 0 ? Math.round((ocupados / total) * 100) : 0;
+  const barColor    = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#22c55e';
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const initiales = (usuario?.nombre ?? 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-  const navItems = NAV_ITEMS.filter(item =>
-    isAdmin ? true : item.roles.includes('OPERADOR')
+  const items = NAV.filter(item =>
+    item.section || isAdmin ? true : item.roles?.includes('OPERADOR')
   );
 
   return (
     <div className={s.shell}>
-      {sidebarOpen && <div className={s.overlay} onClick={() => setSidebarOpen(false)} />}
+      {open && <div className={s.overlay} onClick={() => setOpen(false)} />}
 
-      {/* ── Sidebar ── */}
-      <aside className={`${s.sidebar} ${sidebarOpen ? s.sidebarOpen : ''}`}>
+      <aside className={`${s.sidebar} ${open ? s.sidebarOpen : ''}`}>
+        {/* Logo */}
         <div className={s.sidebarHeader}>
-          <span className={s.logo}>🅿 Parqueadero</span>
+          <div className={s.logoIcon}>🅿</div>
+          <span className={s.logo}>Parqueadero</span>
         </div>
 
-        {/* Mini-dashboard de cupos */}
-        <div className={s.cuposResumen}>
-          <div className={s.cupoItem}>
-            <span className={s.cupoNum} style={{ color: 'var(--color-success)' }}>{totalDisponibles}</span>
-            <span className={s.cupoLabel}>Disponibles</span>
+        {/* Stats: Disponibles | Ocupados */}
+        <div className={s.statsBar}>
+          <div className={s.statItem}>
+            <span className={s.statNum} style={{ color: '#22c55e' }}>{disponibles}</span>
+            <span className={s.statLbl}>Libres</span>
           </div>
-          <div className={s.cupoItem}>
-            <span className={s.cupoNum} style={{ color: 'var(--color-danger)' }}>{totalOcupados}</span>
-            <span className={s.cupoLabel}>Ocupados</span>
+          <div className={s.statDivider} />
+          <div className={s.statItem}>
+            <span className={s.statNum} style={{ color: '#ef4444' }}>{ocupados}</span>
+            <span className={s.statLbl}>Ocupados</span>
           </div>
-          <div className={s.cupoItem}>
-            <span className={s.cupoNum} style={{ color: pctOcup >= 90 ? 'var(--color-danger)' : 'var(--color-warning)' }}>{pctOcup}%</span>
-            <span className={s.cupoLabel}>Ocupación</span>
+          <div className={s.statDivider} />
+          <div className={s.statItem}>
+            <span className={s.statNum} style={{ color: barColor }}>{pct}%</span>
+            <span className={s.statLbl}>Ocup.</span>
           </div>
         </div>
 
+        {/* Barra de ocupación */}
+        <div className={s.ocupacionBar}>
+          <div className={s.ocupacionLabel}>
+            <span>Ocupación global</span>
+            <span>{ocupados}/{total}</span>
+          </div>
+          <div className={s.ocupacionTrack}>
+            <div className={s.ocupacionFill} style={{ width: `${pct}%`, background: barColor }} />
+          </div>
+        </div>
+
+        {/* Nav */}
         <nav className={s.nav}>
-          {navItems.map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) => `${s.navLink} ${isActive ? s.navLinkActive : ''}`}
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span className={s.navIcon}>{item.icon}</span>
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+          {items.map((item, i) =>
+            item.section ? (
+              (!isAdmin && item.section === 'Admin') ? null :
+              <div key={i} className={s.navSection}>{item.section}</div>
+            ) : (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) => `${s.navLink} ${isActive ? s.navLinkActive : ''}`}
+                onClick={() => setOpen(false)}
+              >
+                <span className={s.navIcon}>{item.icon}</span>
+                {item.label}
+              </NavLink>
+            )
+          )}
         </nav>
 
+        {/* Footer */}
         <div className={s.sidebarFooter}>
+          <div className={s.avatar}>{initiales}</div>
           <div className={s.userInfo}>
             <span className={s.userName}>{usuario?.nombre}</span>
             <span className={s.userRol}>{usuario?.rol}</span>
           </div>
-          <button className={s.logoutBtn} onClick={handleLogout} title="Cerrar sesión">⏻</button>
+          <button className={s.logoutBtn} onClick={() => { logout(); navigate('/login'); }} title="Salir">
+            ⏻
+          </button>
         </div>
       </aside>
 
-      {/* ── Contenido principal ── */}
+      {/* Main */}
       <div className={s.main}>
         <header className={s.topbar}>
-          <button className={s.menuBtn} onClick={() => setSidebarOpen(true)}>☰</button>
-          <span className={s.topbarTitle}>🅿 Parqueadero</span>
+          <button className={s.menuBtn} onClick={() => setOpen(true)}>☰</button>
+          <div className={s.topbarLogo}>
+            <span style={{ fontSize: 18 }}>🅿</span>
+            <span className={s.topbarTitle}>Parqueadero</span>
+          </div>
           <span className={s.topbarUser}>{usuario?.nombre}</span>
         </header>
-
         <main className={s.content}>{children}</main>
       </div>
     </div>

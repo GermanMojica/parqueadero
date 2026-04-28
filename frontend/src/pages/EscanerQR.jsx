@@ -1,75 +1,86 @@
-// src/pages/EscanerQR.jsx
-// Escáner de QR con cámara real (MediaDevices API) + modo simulación.
-// Usa jsQR (CDN) para decodificar frames del video.
-// Al leer un QR válido del sistema, registra la salida automáticamente.
-
+// EscanerQR.jsx — Diseño moderno, centrado, cámara real con jsQR
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { registrosApi } from '../api/index';
+import { registrosApi }   from '../api/index';
 import { useParqueadero } from '../context/ParqueaderoContext';
-import { formatFecha, formatMoneda, formatDuracion } from '../utils/format.utils';
+import { formatDuracion, formatMoneda, formatFecha } from '../utils/format.utils';
 import s from './EscanerQR.module.css';
 
-// jsQR se carga dinámicamente desde CDN
+// Carga jsQR desde CDN dinámicamente
 let jsQR = null;
-
 async function cargarJsQR() {
   if (jsQR) return jsQR;
   return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
-    script.onload  = () => { jsQR = window.jsQR; resolve(window.jsQR); };
-    script.onerror = reject;
-    document.head.appendChild(script);
+    if (window.jsQR) { jsQR = window.jsQR; return resolve(jsQR); }
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    sc.onload  = () => { jsQR = window.jsQR; resolve(jsQR); };
+    sc.onerror = () => reject(new Error('No se pudo cargar jsQR'));
+    document.head.appendChild(sc);
   });
 }
 
-const ESTADO = { IDLE: 'IDLE', SCANNING: 'SCANNING', PROCESANDO: 'PROCESANDO', RESULTADO: 'RESULTADO', ERROR: 'ERROR' };
+const ST = { IDLE: 'IDLE', LOADING: 'LOADING', SCANNING: 'SCANNING', PROCESANDO: 'PROCESANDO', OK: 'OK', ERROR: 'ERROR' };
 
 export default function EscanerQR() {
-  const { refetch } = useParqueadero();
-  const videoRef    = useRef(null);
-  const canvasRef   = useRef(null);
-  const streamRef   = useRef(null);
-  const rafRef      = useRef(null);
+  const { refetch }  = useParqueadero();
+  const videoRef     = useRef(null);
+  const canvasRef    = useRef(null);
+  const streamRef    = useRef(null);
+  const rafRef       = useRef(null);
+  const lastQR       = useRef('');
 
-  const [estado,     setEstado]     = useState(ESTADO.IDLE);
-  const [resultado,  setResultado]  = useState(null);
-  const [error,      setError]      = useState('');
-  const [simInput,   setSimInput]   = useState('');
-  const [camError,   setCamError]   = useState('');
+  const [estado,    setEstado]    = useState(ST.IDLE);
+  const [resultado, setResultado] = useState(null);
+  const [error,     setError]     = useState('');
+  const [camErr,    setCamErr]    = useState('');
+  const [simVal,    setSimVal]    = useState('');
+  const [qrDetected, setQrDetected] = useState(false);
+
+  // Limpiar al desmontar
+  useEffect(() => () => detener(), []);
 
   const detener = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
-    setEstado(ESTADO.IDLE);
+    setQrDetected(false);
   }, []);
 
-  useEffect(() => () => detener(), [detener]);
+  const procesarPayload = useCallback(async (raw) => {
+    // Evitar procesar el mismo QR dos veces
+    if (raw === lastQR.current) return;
+    lastQR.current = raw;
+    detener();
+    setQrDetected(true);
 
-  const procesarQR = useCallback(async (payload) => {
+    let payload;
+    try { payload = JSON.parse(raw); } catch {
+      setError('El QR escaneado no tiene un formato válido');
+      setEstado(ST.ERROR);
+      return;
+    }
     if (payload.sys !== 'PKG') {
-      setError('QR no pertenece a este parqueadero');
-      setEstado(ESTADO.ERROR);
+      setError('Este QR no pertenece a este sistema de parqueadero');
+      setEstado(ST.ERROR);
       return;
     }
     if (payload.tipo !== 'ENTRADA') {
-      setError('Este QR ya es de salida — vehículo no está dentro');
-      setEstado(ESTADO.ERROR);
+      setError('Este QR ya corresponde a una salida — el vehículo no está registrado como activo');
+      setEstado(ST.ERROR);
       return;
     }
 
-    setEstado(ESTADO.PROCESANDO);
+    setEstado(ST.PROCESANDO);
     try {
       const res = await registrosApi.registrarSalida({ placa: payload.placa });
       setResultado(res);
-      setEstado(ESTADO.RESULTADO);
+      setEstado(ST.OK);
       refetch();
     } catch (e) {
       setError(e.message);
-      setEstado(ESTADO.ERROR);
+      setEstado(ST.ERROR);
     }
-  }, [refetch]);
+  }, [detener, refetch]);
 
   const escanearFrame = useCallback(async () => {
     const video  = videoRef.current;
@@ -80,144 +91,208 @@ export default function EscanerQR() {
     }
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx  = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
-    const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const img  = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR?.(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-
-    if (code) {
-      detener();
-      try {
-        const payload = JSON.parse(code.data);
-        await procesarQR(payload);
-      } catch {
-        setError('QR con formato no reconocido');
-        setEstado(ESTADO.ERROR);
-      }
+    if (code?.data) {
+      await procesarPayload(code.data);
       return;
     }
     rafRef.current = requestAnimationFrame(escanearFrame);
-  }, [detener, procesarQR]);
+  }, [procesarPayload]);
 
   const iniciarCamara = useCallback(async () => {
-    setError('');
-    setCamError('');
+    setError(''); setCamErr(''); lastQR.current = '';
+    setEstado(ST.LOADING);
     try {
       await cargarJsQR();
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
       });
-      streamRef.current = stream;
+      streamRef.current  = stream;
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
-      setEstado(ESTADO.SCANNING);
+      setEstado(ST.SCANNING);
       rafRef.current = requestAnimationFrame(escanearFrame);
     } catch (e) {
-      setCamError(e.name === 'NotAllowedError'
-        ? 'Permiso de cámara denegado. Permite el acceso en la configuración del navegador.'
-        : `No se pudo acceder a la cámara: ${e.message}`);
+      setEstado(ST.IDLE);
+      setCamErr(
+        e.name === 'NotAllowedError'
+          ? 'Permiso de cámara denegado. Habilítalo en la configuración del navegador.'
+          : e.name === 'NotFoundError'
+          ? 'No se encontró ninguna cámara en este dispositivo.'
+          : `Error al acceder a la cámara: ${e.message}`
+      );
     }
   }, [escanearFrame]);
 
-  const simularEscaneo = async () => {
-    setError('');
-    try {
-      const payload = simInput
-        ? JSON.parse(simInput)
-        : { sys: 'PKG', rid: 1, placa: 'ABC123', tipo: 'ENTRADA', tk: 'TK-DEMO' };
-      await procesarQR(payload);
-    } catch {
-      setError('JSON inválido en el campo de simulación');
-      setEstado(ESTADO.ERROR);
-    }
-  };
+  const pararCamara = () => { detener(); setEstado(ST.IDLE); };
 
   const reiniciar = () => {
-    setEstado(ESTADO.IDLE);
-    setResultado(null);
-    setError('');
+    setEstado(ST.IDLE); setResultado(null);
+    setError(''); setCamErr(''); lastQR.current = '';
+  };
+
+  const simular = async () => {
+    const raw = simVal.trim() || JSON.stringify({ sys:'PKG', rid:1, placa:'ABC123', tipo:'ENTRADA', tk:'TK-DEMO' });
+    await procesarPayload(raw);
   };
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>📷 Escáner QR — Salida rápida</h1>
-      <p className={s.subtitle}>Escanea el código QR del ticket de entrada para registrar la salida automáticamente</p>
+      <div className={s.container}>
 
-      {/* Vista de cámara */}
-      <div className={s.cameraCard}>
-        <div className={s.viewfinder}>
-          <video ref={videoRef} className={s.video} playsInline muted />
-          <canvas ref={canvasRef} className={s.canvas} />
+        {/* ── Header ── */}
+        <div className={s.pageHeader}>
+          <div className={s.headerIcon}>▦</div>
+          <div>
+            <h1 className={s.title}>Escáner QR</h1>
+            <p className={s.subtitle}>Escanea el ticket de entrada para registrar la salida automáticamente</p>
+          </div>
+        </div>
 
-          {estado !== ESTADO.SCANNING && (
-            <div className={s.overlay}>
-              {estado === ESTADO.PROCESANDO && (
-                <div className={s.procesando}><div className={s.spinner} />Procesando salida...</div>
-              )}
-              {estado === ESTADO.IDLE && (
-                <div className={s.idleMsg}>Cámara inactiva</div>
-              )}
+        {/* ── Visor de cámara ── */}
+        <div className={s.scanCard}>
+          <div className={s.viewfinder}>
+            <video ref={videoRef} className={s.video} playsInline muted />
+            <canvas ref={canvasRef} className={s.canvas} />
+
+            {/* Overlay según estado */}
+            {estado !== ST.SCANNING && (
+              <div className={s.overlay}>
+                {estado === ST.IDLE && (
+                  <div className={s.idleContent}>
+                    <div className={s.idleIcon}>📷</div>
+                    <p className={s.idleText}>Cámara inactiva</p>
+                    <p className={s.idleHint}>Presiona el botón para activar</p>
+                  </div>
+                )}
+                {estado === ST.LOADING && (
+                  <div className={s.idleContent}>
+                    <div className={s.loadingSpinner} />
+                    <p className={s.idleText}>Iniciando cámara...</p>
+                  </div>
+                )}
+                {estado === ST.PROCESANDO && (
+                  <div className={s.idleContent}>
+                    <div className={s.procesandoAnim}>✓</div>
+                    <p className={s.idleText} style={{ color: '#22c55e' }}>QR detectado</p>
+                    <p className={s.idleHint}>Procesando salida...</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Marco de escaneo animado */}
+            {estado === ST.SCANNING && (
+              <>
+                <div className={`${s.corner} ${s.tl}`} />
+                <div className={`${s.corner} ${s.tr}`} />
+                <div className={`${s.corner} ${s.bl}`} />
+                <div className={`${s.corner} ${s.br}`} />
+                <div className={s.scanLine} />
+                <div className={s.scanHint}>Apunta al código QR del ticket</div>
+              </>
+            )}
+          </div>
+
+          {/* Error de cámara */}
+          {camErr && (
+            <div className={s.camErrorBox}>
+              <span>⚠</span> {camErr}
             </div>
           )}
 
-          {/* Esquinas del viewfinder */}
-          {estado === ESTADO.SCANNING && (
-            <>
-              <div className={`${s.corner} ${s.tl}`} />
-              <div className={`${s.corner} ${s.tr}`} />
-              <div className={`${s.corner} ${s.bl}`} />
-              <div className={`${s.corner} ${s.br}`} />
-              <div className={s.scanLine} />
-            </>
-          )}
-        </div>
-
-        {camError && <div className={s.camError}>{camError}</div>}
-
-        {estado === ESTADO.IDLE && (
-          <button className={s.btnActivar} onClick={iniciarCamara}>📷 Activar cámara</button>
-        )}
-        {estado === ESTADO.SCANNING && (
-          <button className={s.btnDetener} onClick={detener}>⏹ Detener cámara</button>
-        )}
-      </div>
-
-      {/* Resultado exitoso */}
-      {estado === ESTADO.RESULTADO && resultado && (
-        <div className={s.resultCard}>
-          <div className={s.resultIcon}>✓</div>
-          <h2 className={s.resultTitle}>Salida registrada</h2>
-          <div className={s.resultGrid}>
-            <div className={s.resultField}><span>Placa</span><strong>{resultado.placa}</strong></div>
-            <div className={s.resultField}><span>Espacio</span><strong>{resultado.espacio}</strong></div>
-            <div className={s.resultField}><span>Duración</span><strong>{formatDuracion(resultado.calculo?.minutosTotales)}</strong></div>
-            <div className={s.resultField}><span>Total cobrado</span><strong className={s.total}>{formatMoneda(resultado.calculo?.totalCobrado)}</strong></div>
+          {/* Botones de control */}
+          <div className={s.controls}>
+            {estado === ST.IDLE || estado === ST.LOADING ? (
+              <button className={s.btnActivar} onClick={iniciarCamara} disabled={estado === ST.LOADING}>
+                <span>📷</span> Activar cámara
+              </button>
+            ) : estado === ST.SCANNING ? (
+              <button className={s.btnDetener} onClick={pararCamara}>
+                <span>⏹</span> Detener cámara
+              </button>
+            ) : null}
           </div>
-          <button className={s.btnNuevo} onClick={reiniciar}>Escanear otro vehículo</button>
         </div>
-      )}
 
-      {/* Error */}
-      {estado === ESTADO.ERROR && (
-        <div className={s.errorCard}>
-          <p className={s.errorText}>⚠ {error}</p>
-          <button className={s.btnNuevo} onClick={reiniciar}>Reintentar</button>
+        {/* ── Resultado OK ── */}
+        {estado === ST.OK && resultado && (
+          <div className={s.resultCard}>
+            <div className={s.resultHeader}>
+              <div className={s.resultIcon}>✓</div>
+              <div>
+                <h2 className={s.resultTitle}>Salida registrada correctamente</h2>
+                <p className={s.resultSub}>El vehículo ha sido dado de baja del sistema</p>
+              </div>
+            </div>
+
+            <div className={s.resultGrid}>
+              <div className={s.resultField}>
+                <span>Placa</span>
+                <strong>{resultado.placa}</strong>
+              </div>
+              <div className={s.resultField}>
+                <span>Espacio</span>
+                <strong>{resultado.espacio}</strong>
+              </div>
+              <div className={s.resultField}>
+                <span>Tiempo dentro</span>
+                <strong>{formatDuracion(resultado.calculo?.minutosTotales)}</strong>
+              </div>
+              <div className={s.resultField}>
+                <span>Hora salida</span>
+                <strong>{formatFecha(resultado.calculo?.horaSalida)}</strong>
+              </div>
+            </div>
+
+            <div className={s.resultTotal}>
+              <span>Total cobrado</span>
+              <strong>{formatMoneda(resultado.calculo?.totalCobrado)}</strong>
+            </div>
+
+            <button className={s.btnNuevo} onClick={reiniciar}>
+              ↻ Escanear otro vehículo
+            </button>
+          </div>
+        )}
+
+        {/* ── Error ── */}
+        {estado === ST.ERROR && (
+          <div className={s.errorCard}>
+            <div className={s.errorIcon}>✕</div>
+            <p className={s.errorTitle}>No se pudo procesar</p>
+            <p className={s.errorMsg}>{error}</p>
+            <button className={s.btnNuevo} onClick={reiniciar}>← Reintentar</button>
+          </div>
+        )}
+
+        {/* ── Simulación ── */}
+        <div className={s.simCard}>
+          <div className={s.simHeader}>
+            <span className={s.simBadge}>DEV</span>
+            <span className={s.simTitle}>Simulación de escaneo</span>
+          </div>
+          <p className={s.simDesc}>
+            Usa esto si no tienes cámara o para pruebas. Deja vacío para usar datos de ejemplo.
+          </p>
+          <textarea
+            className={s.simInput}
+            rows={2}
+            placeholder='{"sys":"PKG","rid":1,"placa":"ABC123","tipo":"ENTRADA","tk":"TK-DEMO"}'
+            value={simVal}
+            onChange={e => setSimVal(e.target.value)}
+          />
+          <button
+            className={s.btnSim}
+            onClick={simular}
+            disabled={estado === ST.PROCESANDO}
+          >
+            {estado === ST.PROCESANDO ? 'Procesando...' : '▶ Simular lectura de QR'}
+          </button>
         </div>
-      )}
 
-      {/* Simulación (dev/demo) */}
-      <div className={s.simCard}>
-        <p className={s.simTitle}>Simulación de escaneo</p>
-        <p className={s.simDesc}>Útil para pruebas sin cámara. Pega el JSON del QR o deja vacío para usar ejemplo.</p>
-        <input
-          className={s.simInput}
-          placeholder='{"sys":"PKG","rid":1,"placa":"ABC123","tipo":"ENTRADA","tk":"TK-DEMO"}'
-          value={simInput}
-          onChange={e => setSimInput(e.target.value)}
-        />
-        <button className={s.btnSim} onClick={simularEscaneo} disabled={estado === ESTADO.PROCESANDO}>
-          {estado === ESTADO.PROCESANDO ? 'Procesando...' : '▶ Simular QR leído'}
-        </button>
       </div>
     </div>
   );
