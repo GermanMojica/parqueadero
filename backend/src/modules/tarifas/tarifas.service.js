@@ -21,6 +21,23 @@ async function create({ tipoVehiculoId, precioHora, fraccionMinutos, vigenteDesd
   return { id, message: 'Tarifa creada correctamente' };
 }
 
+async function update(id, { precioHora, fraccionMinutos }) {
+  const [rows] = await pool.execute('SELECT id, activo FROM tarifas WHERE id = ?', [id]);
+  if (!rows[0]) throw new AppError('Tarifa no encontrada', 404);
+  if (!rows[0].activo) throw new AppError('No se puede editar una tarifa inactiva', 409);
+
+  if (precioHora <= 0) throw new AppError('El precio por hora debe ser mayor a cero', 400);
+  if (![15, 30, 60].includes(fraccionMinutos)) {
+    throw new AppError('La fracción mínima debe ser 15, 30 o 60 minutos', 400);
+  }
+
+  await pool.execute(
+    'UPDATE tarifas SET precio_hora = ?, fraccion_minutos = ? WHERE id = ?',
+    [precioHora, fraccionMinutos, id],
+  );
+  return { message: 'Tarifa actualizada correctamente' };
+}
+
 async function deactivate(id) {
   // No se puede desactivar si es la única tarifa activa del tipo
   const [rows] = await pool.execute(
@@ -38,4 +55,4 @@ async function deactivate(id) {
   return { message: 'Tarifa desactivada' };
 }
 
-module.exports = { getAll, create, deactivate };
+module.exports = { getAll, create, update, deactivate };

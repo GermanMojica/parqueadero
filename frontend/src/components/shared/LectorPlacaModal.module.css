@@ -1,0 +1,142 @@
+/* LectorPlacaModal.module.css */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 15, 15, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  animation: fadeIn 0.2s var(--ease-normal);
+}
+
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-md);
+  width: 100%;
+  max-width: 500px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  animation: slideUp 0.25s var(--ease-normal);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-base);
+  background: var(--color-base);
+}
+
+.titleBox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: var(--font-size-base);
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  transition: all var(--ease-fast);
+}
+.closeBtn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--color-crimson4);
+}
+
+.viewfinder {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #000;
+  overflow: hidden;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.overlayState {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.retryBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-base);
+  border: 1px solid var(--color-crimson4);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--ease-fast);
+}
+.retryBtn:hover {
+  background: rgba(220, 38, 38, 0.2);
+}
+
+.scanTarget {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  height: 35%;
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+}
+
+.corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-color: var(--brand-green);
+  border-style: solid;
+  border-width: 0;
+}
+.tl { top: -2px; left: -2px; border-top-width: 3px; border-left-width: 3px; border-radius: 8px 0 0 0; }
+.tr { top: -2px; right: -2px; border-top-width: 3px; border-right-width: 3px; border-radius: 0 8px 0 0; }
+.bl { bottom: -2px; left: -2px; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 8px; }
+.br { bottom: -2px; right: -2px; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 8px 0; }
+
+.hint {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 12px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+}

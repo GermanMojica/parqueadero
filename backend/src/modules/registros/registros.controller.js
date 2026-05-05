@@ -15,7 +15,8 @@ const entradaSchema = z.object({
 });
 
 const salidaSchema = z.object({
-  placa: placaSchema,
+  placa:      placaSchema,
+  metodoPago: z.enum(['EFECTIVO','TARJETA','TRANSFERENCIA','OTRO']).optional().default('EFECTIVO'),
 });
 
 const anularSchema = z.object({

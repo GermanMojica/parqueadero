@@ -11,9 +11,9 @@ const createSchema = z.object({
 });
 
 const updateSchema = z.object({
-  nombre:    z.string().min(2).max(100),
-  activo:    z.boolean(),
-  rolNombre: z.enum(['ADMIN', 'OPERADOR']),
+  nombre:    z.string().min(2).max(100).optional(),
+  activo:    z.boolean().optional(),
+  rolNombre: z.enum(['ADMIN', 'OPERADOR']).optional(),
 });
 
 const passwordSchema = z.object({
@@ -44,4 +44,8 @@ async function cambiarPassword(req, res, next) {
   } catch (e) { next(e); }
 }
 
-module.exports = { getAll, getById, create, update, cambiarPassword, createSchema, updateSchema, passwordSchema };
+async function remove(req, res, next) {
+  try { ok(res, await service.remove(Number(req.params.id), req.user.id)); } catch (e) { next(e); }
+}
+
+module.exports = { getAll, getById, create, update, remove, cambiarPassword, createSchema, updateSchema, passwordSchema };

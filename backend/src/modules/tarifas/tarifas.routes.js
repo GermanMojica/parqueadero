@@ -11,6 +11,7 @@ router.use(auth);
 
 router.get('/',           ctrl.getAll);                                              // todos pueden ver
 router.post('/',          requireRol('ADMIN'), validate(ctrl.createSchema), ctrl.create);
+router.patch('/:id',      requireRol('ADMIN'), validate(ctrl.updateSchema), ctrl.update);
 router.delete('/:id',     requireRol('ADMIN'), ctrl.deactivate);
 
 module.exports = router;

@@ -21,6 +21,7 @@ export const registrosApi = {
 export const tarifasApi = {
   getAll:     ()      => api.get('/tarifas').then(r => r.data.data),
   create:     (data)  => api.post('/tarifas', data).then(r => r.data.data),
+  update:     (id, data) => api.patch(`/tarifas/${id}`, data).then(r => r.data.data),
   deactivate: (id)    => api.delete(`/tarifas/${id}`).then(r => r.data.data),
 };
 
@@ -28,6 +29,7 @@ export const usuariosApi = {
   getAll:          ()         => api.get('/usuarios').then(r => r.data.data),
   create:          (data)     => api.post('/usuarios', data).then(r => r.data.data),
   update:          (id, data) => api.put(`/usuarios/${id}`, data).then(r => r.data.data),
+  delete:          (id)       => api.delete(`/usuarios/${id}`).then(r => r.data.data),
   cambiarPassword: (id, data) => api.patch(`/usuarios/${id}/password`, data).then(r => r.data.data),
 };
 

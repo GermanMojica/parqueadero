@@ -12,6 +12,13 @@ const createSchema = z.object({
   vigenteDesde: z.string().datetime().optional(),
 });
 
+const updateSchema = z.object({
+  precioHora:      z.number().positive(),
+  fraccionMinutos: z.number().int().refine((v) => [15, 30, 60].includes(v), {
+    message: 'Fracción debe ser 15, 30 o 60 minutos',
+  }),
+});
+
 async function getAll(req, res, next) {
   try { ok(res, await service.getAll()); } catch (e) { next(e); }
 }
@@ -20,8 +27,12 @@ async function create(req, res, next) {
   try { created(res, await service.create(req.body)); } catch (e) { next(e); }
 }
 
+async function update(req, res, next) {
+  try { ok(res, await service.update(Number(req.params.id), req.body)); } catch (e) { next(e); }
+}
+
 async function deactivate(req, res, next) {
   try { ok(res, await service.deactivate(Number(req.params.id))); } catch (e) { next(e); }
 }
 
-module.exports = { getAll, create, deactivate, createSchema };
+module.exports = { getAll, create, update, deactivate, createSchema, updateSchema };

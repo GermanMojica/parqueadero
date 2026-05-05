@@ -1,153 +1,206 @@
-// src/pages/MapaParqueadero.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { espaciosApi }   from '../api/index';
+import { useRegistros }  from '../hooks/useRegistros';
 import { useParqueadero } from '../context/ParqueaderoContext';
+import { formatFecha, formatDuracion, formatMoneda } from '../utils/format.utils';
+import { 
+  Map as MapIcon, RefreshCw, Loader2, Bike, Truck, Car,
+  Banknote, CreditCard, Smartphone, MoreHorizontal, CheckCircle
+} from 'lucide-react';
 import s from './MapaParqueadero.module.css';
 
-const ESTADO_CONFIG = {
-  DISPONIBLE:    { label: 'Libre',       cls: s.disponible },
-  OCUPADO:       { label: 'Ocupado',     cls: s.ocupado },
-  MANTENIMIENTO: { label: 'Mantenim.',   cls: s.mantenimiento },
+const ESTADO_CFG = {
+  DISPONIBLE:    { label: 'Libre',      color: 'var(--brand-green)' },
+  OCUPADO:       { label: 'Ocupado',    color: 'var(--color-crimson4)' },
+  MANTENIMIENTO: { label: 'Mant.',      color: 'var(--color-yellowA7)' },
 };
 
+const TIPO_ICON = { 
+  MOTO: <Bike size={16}/>, 
+  CAMIONETA: <Truck size={16}/>, 
+  SEDAN: <Car size={16}/> 
+};
+
+const TIPO_ICON_LG = { 
+  MOTO: <Bike size={24}/>, 
+  CAMIONETA: <Truck size={24}/>, 
+  SEDAN: <Car size={24}/> 
+};
+
+const METODOS = [
+  { id: 'EFECTIVO', icon: <Banknote size={20}/>, label: 'Efectivo' },
+  { id: 'TARJETA',  icon: <CreditCard size={20}/>, label: 'Tarjeta'  },
+  { id: 'TRANSFERENCIA', icon: <Smartphone size={20}/>, label: 'Transfer.' },
+  { id: 'OTRO',     icon: <MoreHorizontal size={20}/>, label: 'Otro'     },
+];
+
 function EspacioCell({ espacio, onClick }) {
-  const cfg = ESTADO_CONFIG[espacio.estado] ?? ESTADO_CONFIG.DISPONIBLE;
+  const cfg = ESTADO_CFG[espacio.estado] ?? ESTADO_CFG.DISPONIBLE;
+  const tipoIcon = TIPO_ICON[espacio.tipo_vehiculo] ?? <Car size={16}/>;
   return (
     <button
-      className={`${s.espacio} ${cfg.cls}`}
+      className={`${s.espacio} ${s[espacio.estado?.toLowerCase() ?? 'disponible']}`}
       onClick={() => onClick(espacio)}
-      title={`${espacio.codigo} — ${espacio.estado}`}
+      title={`${espacio.codigo} — ${espacio.estado}${espacio.placa ? ' · ' + espacio.placa : ''}`}
     >
+      <span className={s.espacioTipo}>{tipoIcon}</span>
       <span className={s.espacioCodigo}>{espacio.codigo}</span>
-      <span className={s.espacioEstado}>{cfg.label}</span>
+      {espacio.estado === 'OCUPADO' && espacio.placa ? (
+        <span className={s.espacioPlaca}>{espacio.placa}</span>
+      ) : (
+        <span className={s.espacioEstado}>{cfg.label}</span>
+      )}
     </button>
   );
 }
 
 export default function MapaParqueadero() {
-  const { resumen, refetch } = useParqueadero();
-  const [espacios,  setEspacios]  = useState([]);
-  const [loading,   setLoading]   = useState(false);
-  const [seleccion, setSeleccion] = useState(null);
-  const [filtroZona, setFiltroZona] = useState('TODOS');
+  const { resumen, refetch }                     = useParqueadero();
+  const { previewSalida, registrarSalida, loading } = useRegistros();
 
-  const cargarEspacios = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await espaciosApi.getAll();
-      setEspacios(data);
-    } finally {
-      setLoading(false);
-    }
+  const [espacios,   setEspacios]   = useState([]);
+  const [cargando,   setCargando]   = useState(false);
+  const [seleccion,  setSeleccion]  = useState(null);
+  const [preview,    setPreview]    = useState(null);
+  const [loadPreview,setLoadPreview]= useState(false);
+  const [metodoPago, setMetodoPago] = useState('');
+  const [pagoError,  setPagoError]  = useState('');
+  const [salidaOk,   setSalidaOk]   = useState(null);
+  const [filtro,     setFiltro]     = useState('TODOS');
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    try { setEspacios(await espaciosApi.getAll()); }
+    finally { setCargando(false); }
   }, []);
 
-  useEffect(() => { cargarEspacios(); }, [cargarEspacios]);
+  useEffect(() => { cargar(); }, [cargar]);
 
-  // Agrupar espacios por tipo de vehículo
+  const handleSeleccion = async (espacio) => {
+    setSeleccion(espacio);
+    setPreview(null);
+    setMetodoPago('');
+    setPagoError('');
+    setSalidaOk(null);
+    if (espacio.estado === 'OCUPADO' && espacio.placa) {
+      setLoadPreview(true);
+      try {
+        const data = await previewSalida(espacio.placa);
+        setPreview(data);
+      } catch { /* no bloquea el modal */ }
+      finally { setLoadPreview(false); }
+    }
+  };
+
+  const handleSalida = async () => {
+    if (!metodoPago) { setPagoError('Selecciona el método de pago'); return; }
+    setPagoError('');
+    try {
+      const result = await registrarSalida({ placa: seleccion.placa, metodoPago });
+      setSalidaOk(result);
+      refetch();
+      cargar();
+    } catch (err) {
+      setPagoError(err.message || 'Error al registrar la salida');
+    }
+  };
+
+  const cerrarModal = () => {
+    setSeleccion(null);
+    setPreview(null);
+    setSalidaOk(null);
+    setMetodoPago('');
+    setPagoError('');
+  };
+
   const grupos = espacios.reduce((acc, e) => {
-    const k = e.tipo_vehiculo;
-    if (!acc[k]) acc[k] = [];
-    acc[k].push(e);
+    const k = e.tipo_vehiculo ?? 'OTROS';
+    (acc[k] = acc[k] || []).push(e);
     return acc;
   }, {});
 
-  const zonas = ['TODOS', ...Object.keys(grupos)];
-
-  const totalDisp = espacios.filter(e => e.estado === 'DISPONIBLE').length;
-  const totalOcup = espacios.filter(e => e.estado === 'OCUPADO').length;
-  const totalMant = espacios.filter(e => e.estado === 'MANTENIMIENTO').length;
-  const pctOcup   = espacios.length ? Math.round((totalOcup / espacios.length) * 100) : 0;
+  const zonas      = ['TODOS', ...Object.keys(grupos)];
+  const totalDisp  = espacios.filter(e => e.estado === 'DISPONIBLE').length;
+  const totalOcup  = espacios.filter(e => e.estado === 'OCUPADO').length;
+  const totalMant  = espacios.filter(e => e.estado === 'MANTENIMIENTO').length;
+  const pctOcup    = espacios.length ? Math.round((totalOcup / espacios.length) * 100) : 0;
 
   return (
     <div className={s.page}>
-      {/* KPIs */}
+      <div className={s.pageHeader}>
+        <h1 className={s.title}>
+          <MapIcon size={28} /> Mapa del Parqueadero
+        </h1>
+        <button className={s.refreshBtn} onClick={() => { cargar(); refetch(); }}>
+          <RefreshCw size={16} /> Actualizar
+        </button>
+      </div>
+
       <div className={s.kpiRow}>
-        <div className={s.kpi} style={{ borderTop: '3px solid var(--color-success)' }}>
-          <span className={s.kpiNum} style={{ color: 'var(--color-success)' }}>{totalDisp}</span>
+        <div className={s.kpi} style={{ '--kpi-color': 'var(--brand-green)' }}>
+          <span className={s.kpiNum} style={{ color:'var(--brand-green)' }}>{totalDisp}</span>
           <span className={s.kpiLabel}>Disponibles</span>
         </div>
-        <div className={s.kpi} style={{ borderTop: '3px solid var(--color-danger)' }}>
-          <span className={s.kpiNum} style={{ color: 'var(--color-danger)' }}>{totalOcup}</span>
+        <div className={s.kpi} style={{ '--kpi-color': 'var(--color-crimson4)' }}>
+          <span className={s.kpiNum} style={{ color:'var(--color-crimson4)' }}>{totalOcup}</span>
           <span className={s.kpiLabel}>Ocupados</span>
         </div>
-        <div className={s.kpi} style={{ borderTop: '3px solid var(--color-warning)' }}>
-          <span className={s.kpiNum} style={{ color: 'var(--color-warning)' }}>{totalMant}</span>
-          <span className={s.kpiLabel}>Mantenimiento</span>
+        <div className={s.kpi} style={{ '--kpi-color': 'var(--color-yellowA7)' }}>
+          <span className={s.kpiNum} style={{ color:'var(--color-yellowA7)' }}>{totalMant}</span>
+          <span className={s.kpiLabel}>Mantenim.</span>
         </div>
-        <div className={s.kpi} style={{ borderTop: '3px solid var(--color-primary)' }}>
-          <span className={s.kpiNum}>{pctOcup}%</span>
+        <div className={s.kpi} style={{ '--kpi-color': pctOcup >= 90 ? 'var(--color-crimson4)' : pctOcup >= 70 ? 'var(--color-yellowA7)' : 'var(--brand-green)' }}>
+          <span className={s.kpiNum} style={{ color: pctOcup >= 90 ? 'var(--color-crimson4)' : pctOcup >= 70 ? 'var(--color-yellowA7)' : 'var(--brand-green)' }}>{pctOcup}%</span>
           <span className={s.kpiLabel}>Ocupación</span>
         </div>
       </div>
 
-      {/* Controles */}
       <div className={s.controls}>
         <div className={s.filtros}>
           {zonas.map(z => (
-            <button
-              key={z}
-              className={`${s.filtroBtn} ${filtroZona === z ? s.filtroBtnActive : ''}`}
-              onClick={() => setFiltroZona(z)}
-            >
-              {z}
+            <button key={z} className={`${s.filtroBtn} ${filtro === z ? s.filtroBtnActive : ''}`}
+              onClick={() => setFiltro(z)}>
+              {TIPO_ICON[z] ?? <MapIcon size={16}/>} {z}
             </button>
           ))}
         </div>
-        <button className={s.refreshBtn} onClick={() => { cargarEspacios(); refetch(); }}>
-          ↻ Actualizar
-        </button>
+        <div className={s.legend}>
+          {Object.entries(ESTADO_CFG).map(([k, v]) => (
+            <div key={k} className={s.legendItem}>
+              <div className={s.legendDot} style={{ background: v.color }} />
+              <span>{v.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Leyenda */}
-      <div className={s.legend}>
-        {Object.entries(ESTADO_CONFIG).map(([k, v]) => (
-          <div key={k} className={s.legendItem}>
-            <div className={`${s.legendDot} ${v.cls}`} />
-            <span>{v.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Mapa de espacios */}
-      {loading ? (
-        <div className={s.loading}>Cargando mapa de espacios...</div>
+      {cargando ? (
+        <div className={s.loading}>
+          <Loader2 size={32} className="animate-spin" />
+          Cargando mapa de espacios...
+        </div>
       ) : (
         <div className={s.mapaWrapper}>
           {Object.entries(grupos)
-            .filter(([tipo]) => filtroZona === 'TODOS' || tipo === filtroZona)
+            .filter(([tipo]) => filtro === 'TODOS' || tipo === filtro)
             .map(([tipo, lista]) => {
-              const libresTipo = lista.filter(e => e.estado === 'DISPONIBLE').length;
+              const libres = lista.filter(e => e.estado === 'DISPONIBLE').length;
+              const pct    = Math.round(((lista.length - libres) / lista.length) * 100);
+              const col    = libres === 0 ? 'var(--color-crimson4)' : libres <= 3 ? 'var(--color-yellowA7)' : 'var(--brand-green)';
               return (
                 <div key={tipo} className={s.zona}>
                   <div className={s.zonaHeader}>
-                    <span className={s.zonaNombre}>
-                      {tipo === 'MOTO' ? '🏍' : tipo === 'CAMIONETA' ? '🚙' : '🚗'} {tipo}
-                    </span>
-                    <span className={s.zonaLibres} style={{
-                      color: libresTipo === 0 ? 'var(--color-danger)' : 'var(--color-success)'
-                    }}>
-                      {libresTipo === 0 ? 'LLENO' : `${libresTipo} libres`}
+                    <span className={s.zonaNombre}>{TIPO_ICON_LG[tipo] ?? <Car size={24}/>} {tipo}</span>
+                    <span className={s.zonaLibres} style={{ color: col }}>
+                      {libres === 0 ? 'LLENO' : `${libres} libre${libres !== 1 ? 's' : ''}`}
                     </span>
                   </div>
-
-                  {/* Barra de ocupación por tipo */}
                   <div className={s.barTrack}>
-                    <div
-                      className={s.barFill}
-                      style={{
-                        width: `${Math.round(((lista.length - libresTipo) / lista.length) * 100)}%`,
-                        background: libresTipo === 0 ? 'var(--color-danger)' : 'var(--color-success)',
-                      }}
-                    />
+                    <div className={s.barFill} style={{ width:`${pct}%`, background:col }} />
                   </div>
-
                   <div className={s.espaciosGrid}>
                     {lista.map(e => (
-                      <EspacioCell
-                        key={e.id}
-                        espacio={e}
-                        onClick={setSeleccion}
-                      />
+                      <EspacioCell key={e.id} espacio={e} onClick={handleSeleccion} />
                     ))}
                   </div>
                 </div>
@@ -156,25 +209,84 @@ export default function MapaParqueadero() {
         </div>
       )}
 
-      {/* Modal detalle de espacio */}
       {seleccion && (
-        <div className={s.modalOverlay} onClick={() => setSeleccion(null)}>
+        <div className={s.modalOverlay} onClick={cerrarModal}>
           <div className={s.modal} onClick={e => e.stopPropagation()}>
-            <h3 className={s.modalTitle}>Espacio {seleccion.codigo}</h3>
-            <div className={s.modalBody}>
-              <p><strong>Tipo:</strong> {seleccion.tipo_vehiculo}</p>
-              <p><strong>Estado:</strong>
-                <span style={{
-                  color: seleccion.estado === 'DISPONIBLE' ? 'var(--color-success)'
-                       : seleccion.estado === 'OCUPADO' ? 'var(--color-danger)'
-                       : 'var(--color-warning)',
-                  fontWeight: 600, marginLeft: 8
-                }}>
-                  {seleccion.estado}
-                </span>
-              </p>
-            </div>
-            <button className={s.modalClose} onClick={() => setSeleccion(null)}>Cerrar</button>
+            {salidaOk ? (
+              <>
+                <div className={s.modalHeader}>
+                  <span className={s.modalTitle}>
+                    <CheckCircle size={24} color="var(--brand-green)" /> Salida registrada
+                  </span>
+                  <span className={s.modalBadge} style={{ background:'rgba(62,207,142,0.1)', color:'var(--brand-green)' }}>COMPLETADO</span>
+                </div>
+                <div className={s.modalBody}>
+                  <div className={s.modalRow}><span>Placa</span><strong>{salidaOk.placa}</strong></div>
+                  <div className={s.modalRow}><span>Duración</span><strong>{formatDuracion(salidaOk.calculo?.minutosTotales)}</strong></div>
+                  <div className={s.modalRow}><span>Total cobrado</span><strong style={{ color:'var(--brand-green)', fontSize:'1.1rem' }}>{formatMoneda(salidaOk.calculo?.totalEstimado ?? salidaOk.calculo?.totalCobrado)}</strong></div>
+                </div>
+                <button className={s.modalClose} onClick={cerrarModal}>Cerrar</button>
+              </>
+            ) : (
+              <>
+                <div className={s.modalHeader}>
+                  <span className={s.modalTitle}>
+                    {TIPO_ICON_LG[seleccion.tipo_vehiculo] ?? <Car size={24}/>} Espacio {seleccion.codigo}
+                  </span>
+                  <span className={s.modalBadge} style={{
+                    background: seleccion.estado === 'DISPONIBLE' ? 'rgba(62,207,142,0.1)'
+                              : seleccion.estado === 'OCUPADO'    ? 'rgba(220,38,38,0.1)' : 'rgba(217,119,6,0.1)',
+                    color:      seleccion.estado === 'DISPONIBLE' ? 'var(--brand-green)'
+                              : seleccion.estado === 'OCUPADO'    ? 'var(--color-crimson4)' : 'var(--color-yellowA7)',
+                  }}>
+                    {ESTADO_CFG[seleccion.estado]?.label ?? seleccion.estado}
+                  </span>
+                </div>
+
+                <div className={s.modalBody}>
+                  <div className={s.modalRow}><span>Tipo</span><strong>{seleccion.tipo_vehiculo}</strong></div>
+
+                  {seleccion.estado === 'OCUPADO' && (
+                    <>
+                      <div className={s.modalRow}><span>Placa</span><strong>{seleccion.placa ?? '—'}</strong></div>
+                      {loadPreview && <div className={s.modalRow}><span colSpan={2} style={{display:'flex', alignItems:'center', gap:'8px'}}><Loader2 size={16} className="animate-spin"/> Calculando cobro...</span></div>}
+                      {preview && (
+                        <>
+                          <div className={s.modalRow}><span>Entrada</span><strong>{formatFecha(preview.registro?.horaEntrada)}</strong></div>
+                          <div className={s.modalRow}><span>Tiempo aprox.</span><strong>{formatDuracion(preview.calculo?.minutosTotales)}</strong></div>
+                          <div className={s.modalRow}><span>Cobro estimado</span><strong style={{ color:'var(--brand-link)', fontSize:'1.05rem' }}>{formatMoneda(preview.calculo?.totalEstimado)}</strong></div>
+                        </>
+                      )}
+
+                      <div style={{ paddingTop: 'var(--space-3)' }}>
+                        <p style={{ fontFamily:'var(--font-mono)', fontSize:'var(--font-size-xs)', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'1.2px', marginBottom:'var(--space-2)' }}>
+                          Método de pago
+                        </p>
+                        <div className={s.pagoMiniGrid}>
+                          {METODOS.map(m => (
+                            <button key={m.id} type="button"
+                              className={`${s.pagoBtnMini} ${metodoPago === m.id ? s.pagoBtnMiniActive : ''}`}
+                              onClick={() => { setMetodoPago(m.id); setPagoError(''); }}>
+                              {m.icon}
+                              <span>{m.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        {pagoError && <p className={s.pagoMiniError}>{pagoError}</p>}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {seleccion.estado === 'OCUPADO' && (
+                  <button className={s.btnSalidaMapa} onClick={handleSalida}
+                    disabled={loading || loadPreview}>
+                    {loading ? 'Procesando...' : 'Registrar salida desde mapa'}
+                  </button>
+                )}
+                <button className={s.modalClose} onClick={cerrarModal}>Cerrar</button>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
-// src/components/shared/PlacaInput.jsx
 import { useState, useCallback } from 'react';
 import { PAISES, validarPlaca, normalizarPlaca, aplicarMascaraCO } from '../../utils/placa.validator';
+import { Check, X, Camera } from 'lucide-react';
+import { LectorPlacaModal } from './LectorPlacaModal';
 import s from './PlacaInput.module.css';
 
 /**
@@ -13,22 +14,26 @@ export function PlacaInput({ value = '', onChange, disabled, autoFocus }) {
   const [pais,    setPais]    = useState('CO');
   const [tipoIdx, setTipoIdx] = useState(0);
   const [raw,     setRaw]     = useState(value);
+  const [showOcr, setShowOcr] = useState(false);
 
   const tiposDelPais = PAISES[pais]?.tipos ?? [];
   const tipoActual   = tiposDelPais[tipoIdx] ?? tiposDelPais[0];
   const esExtranjero = pais !== 'CO';
 
-  const handlePlacaChange = useCallback((e) => {
-    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9\-]/g, '');
-    // Aplicar máscara solo para Colombia estándar (6 chars sin letra al final)
-    if (pais === 'CO' && (tipoIdx === 0 || tipoIdx === 1)) {
-      val = aplicarMascaraCO(val);
+  const fireChange = useCallback((val, currentPais, currentTipo) => {
+    let rawVal = val.toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+    if (currentPais === 'CO' && (currentTipo === 0 || currentTipo === 1)) {
+      rawVal = aplicarMascaraCO(rawVal);
     }
-    setRaw(val);
-    const placa  = normalizarPlaca(val);
-    const result = validarPlaca(placa, pais, tipoIdx);
-    onChange?.(placa, { pais, tipoIdx, valida: result.valida, mensaje: result.mensaje });
-  }, [pais, tipoIdx, onChange]);
+    setRaw(rawVal);
+    const placa  = normalizarPlaca(rawVal);
+    const result = validarPlaca(placa, currentPais, currentTipo);
+    onChange?.(placa, { pais: currentPais, tipoIdx: currentTipo, valida: result.valida, mensaje: result.mensaje });
+  }, [onChange]);
+
+  const handlePlacaChange = (e) => {
+    fireChange(e.target.value, pais, tipoIdx);
+  };
 
   const handlePaisChange = (e) => {
     const nuevoPais = e.target.value;
@@ -50,7 +55,7 @@ export function PlacaInput({ value = '', onChange, disabled, autoFocus }) {
 
   return (
     <div className={s.wrapper}>
-      {/* Selector de país — solo muestra si se hace clic en "Extranjera" */}
+      {/* Selector de país */}
       <div className={s.paisRow}>
         <select
           className={s.select}
@@ -79,17 +84,29 @@ export function PlacaInput({ value = '', onChange, disabled, autoFocus }) {
           value={raw}
           onChange={handlePlacaChange}
           placeholder={tipoActual?.mascara ?? 'ABC-123'}
-          maxLength={(tipoActual?.maxLen ?? 6) + (pais === 'CO' ? 1 : 2)} // +1 por el guión
+          maxLength={(tipoActual?.maxLen ?? 6) + (pais === 'CO' ? 1 : 2)}
           disabled={disabled}
           autoFocus={autoFocus}
           autoCapitalize="characters"
           spellCheck={false}
         />
-        {validation && (
-          <span className={`${s.icon} ${validation.valida ? s.iconOk : s.iconErr}`}>
-            {validation.valida ? '✓' : '✕'}
-          </span>
-        )}
+        
+        <div className={s.inputActions}>
+          <button 
+            type="button" 
+            className={s.ocrBtn} 
+            onClick={() => setShowOcr(true)}
+            disabled={disabled}
+            title="Escanear placa con la cámara"
+          >
+            <Camera size={18} />
+          </button>
+          {validation && (
+            <span className={`${s.icon} ${validation.valida ? s.iconOk : s.iconErr}`}>
+              {validation.valida ? <Check size={16} /> : <X size={16} />}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Mensaje de validación */}
@@ -103,6 +120,17 @@ export function PlacaInput({ value = '', onChange, disabled, autoFocus }) {
           {esExtranjero && <span className={s.extBadge}>Placa extranjera</span>}
           {tipoActual.mascara} — {tipoActual.desc}
         </p>
+      )}
+
+      {/* Modal OCR */}
+      {showOcr && (
+        <LectorPlacaModal 
+          onClose={() => setShowOcr(false)} 
+          onPlacaDetected={(placaDetectada) => {
+            setShowOcr(false);
+            fireChange(placaDetectada, pais, tipoIdx);
+          }} 
+        />
       )}
     </div>
   );

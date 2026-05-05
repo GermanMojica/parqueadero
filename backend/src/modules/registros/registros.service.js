@@ -17,12 +17,20 @@ let _tarifasEspecialesCache = null;
 let _cacheTs = 0;
 async function _getTarifasEspeciales() {
   if (_tarifasEspecialesCache && Date.now() - _cacheTs < 5 * 60_000) return _tarifasEspecialesCache;
-  const [rows] = await pool.execute(
-    'SELECT * FROM tarifas_especiales WHERE activo = 1',
-  );
-  _tarifasEspecialesCache = rows;
-  _cacheTs = Date.now();
-  return rows;
+  try {
+    const [rows] = await pool.execute(
+      'SELECT * FROM tarifas_especiales WHERE activo = 1',
+    );
+    _tarifasEspecialesCache = rows;
+    _cacheTs = Date.now();
+    return rows;
+  } catch (e) {
+    // Si la tabla no existe en la base de datos actual (aún no migrada), retornar vacío sin fallar
+    if (e.code === 'ER_NO_SUCH_TABLE') {
+      return [];
+    }
+    throw e;
+  }
 }
 
 // ─── REGISTRAR ENTRADA ────────────────────────────────────────────────────────
@@ -135,7 +143,7 @@ async function previewSalida(placa) {
 }
 
 // ─── REGISTRAR SALIDA ─────────────────────────────────────────────────────────
-async function registrarSalida({ placa, usuarioId }) {
+async function registrarSalida({ placa, usuarioId, metodoPago = 'EFECTIVO' }) {
   return withTransaction(async (conn) => {
 
     // Buscar registro activo
@@ -208,6 +216,7 @@ async function registrarSalida({ placa, usuarioId }) {
         placa:          registro.placa,
         minutos:        calculo.minutosTotales,
         total:          calculo.total,
+        metodoPago,
         tarifaEspecial: calculo.tarifaEspecialAplicada,
       },
     }, conn);

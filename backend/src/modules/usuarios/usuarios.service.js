@@ -30,12 +30,16 @@ async function create({ nombre, email, password, rolNombre }) {
 }
 
 async function update(id, { nombre, activo, rolNombre }) {
-  await getById(id); // Valida existencia
+  const existing = await getById(id); // Valida existencia
 
-  const [roles] = await pool.execute('SELECT id FROM roles WHERE nombre = ?', [rolNombre]);
-  if (!roles[0]) throw new AppError(`Rol '${rolNombre}' no existe`, 400);
+  const nuevoNombre = nombre !== undefined ? nombre : existing.nombre;
+  const nuevoActivo = activo !== undefined ? activo : existing.activo;
+  const nuevoRol    = rolNombre !== undefined ? rolNombre : existing.rol;
 
-  return repo.update(id, { nombre, activo, rolId: roles[0].id });
+  const [roles] = await pool.execute('SELECT id FROM roles WHERE nombre = ?', [nuevoRol]);
+  if (!roles[0]) throw new AppError(`Rol '${nuevoRol}' no existe`, 400);
+
+  return repo.update(id, { nombre: nuevoNombre, activo: nuevoActivo, rolId: roles[0].id });
 }
 
 async function cambiarPassword(id, { passwordActual, passwordNuevo }) {
@@ -52,4 +56,12 @@ async function cambiarPassword(id, { passwordActual, passwordNuevo }) {
   await repo.updatePassword(id, nuevoHash);
 }
 
-module.exports = { getAll, getById, create, update, cambiarPassword };
+async function remove(id, requesterId) {
+  if (id === requesterId) throw new AppError('No puedes eliminar tu propio usuario', 409);
+  const usuario = await getById(id);
+  if (!usuario) throw new AppError('Usuario no encontrado', 404);
+  await pool.execute('DELETE FROM usuarios WHERE id = ?', [id]);
+  return { message: `Usuario '${usuario.nombre}' eliminado correctamente` };
+}
+
+module.exports = { getAll, getById, create, update, remove, cambiarPassword };

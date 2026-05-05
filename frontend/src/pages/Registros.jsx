@@ -1,11 +1,9 @@
-// src/pages/Registros.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { registrosApi }   from '../api/index';
 import { useAuth }        from '../context/AuthContext';
-import { formatFecha, formatDuracion, formatMoneda, normalizarPlaca } from '../utils/format.utils';
+import { formatFecha, formatDuracion, formatMoneda } from '../utils/format.utils';
+import { RefreshCw, Search, ArrowLeft, ArrowRight, Loader2, FileText, AlertCircle } from 'lucide-react';
 import s from './Registros.module.css';
-
-const ESTADO_COLORS = { ABIERTO: 'success', CERRADO: 'primary', ANULADO: 'danger' };
 
 export default function Registros() {
   const { isAdmin } = useAuth();
@@ -40,21 +38,26 @@ export default function Registros() {
     <div className={s.page}>
       {/* Encabezado */}
       <div className={s.pageHeader}>
-        <h1 className={s.title}>Historial de Registros</h1>
+        <h1 className={s.title}>
+          Historial de Registros
+        </h1>
         <span className={s.total}>{data.total} registros encontrados</span>
       </div>
 
       {/* Filtros */}
       <div className={s.filtros}>
-        <input
-          name="placa"
-          className={s.filterInput}
-          placeholder="Buscar por placa..."
-          value={filtros.placa}
-          onChange={handleFiltro}
-          maxLength={8}
-          style={{ textTransform: 'uppercase' }}
-        />
+        <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+          <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            name="placa"
+            className={s.filterInput}
+            placeholder="Buscar por placa..."
+            value={filtros.placa}
+            onChange={handleFiltro}
+            maxLength={8}
+            style={{ textTransform: 'uppercase', paddingLeft: 34, width: '100%' }}
+          />
+        </div>
         <select name="estado" className={s.filterInput} value={filtros.estado} onChange={handleFiltro}>
           <option value="">Todos los estados</option>
           <option value="ABIERTO">Abierto</option>
@@ -62,11 +65,12 @@ export default function Registros() {
           <option value="ANULADO">Anulado</option>
         </select>
         <button className={s.refreshBtn} onClick={fetchData} disabled={loading}>
-          {loading ? '...' : '↻ Actualizar'}
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          {loading ? 'Cargando...' : 'Actualizar'}
         </button>
       </div>
 
-      {error && <div className={s.errorMsg}>{error}</div>}
+      {error && <div className={s.errorMsg}><AlertCircle size={16} style={{display:'inline', verticalAlign:'middle'}}/> {error}</div>}
 
       {/* Tabla */}
       <div className={s.tableWrapper}>
@@ -87,17 +91,17 @@ export default function Registros() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={10} className={s.loadingRow}>Cargando...</td></tr>
+              <tr><td colSpan={10} className={s.loadingRow}><Loader2 size={24} className="animate-spin" style={{margin:'0 auto'}}/></td></tr>
             ) : data.data.length === 0 ? (
-              <tr><td colSpan={10} className={s.emptyRow}>No hay registros con los filtros aplicados</td></tr>
+              <tr><td colSpan={10} className={s.emptyRow}><FileText size={24} style={{display:'block', margin:'0 auto 8px', opacity:0.5}}/>No hay registros con los filtros aplicados</td></tr>
             ) : data.data.map(reg => (
               <tr key={reg.id} className={reg.estado === 'ABIERTO' ? s.rowActive : ''}>
-                <td className={s.idCell}>#{reg.id}</td>
+                <td className={s.idCell}>{reg.id}</td>
                 <td className={s.placaCell}>{reg.placa}</td>
                 <td>{reg.tipo_vehiculo}</td>
                 <td className={s.espacioCell}>{reg.espacio_codigo}</td>
                 <td>{formatFecha(reg.hora_entrada)}</td>
-                <td>{reg.hora_salida ? formatFecha(reg.hora_salida) : <span className={s.dentro}>Dentro</span>}</td>
+                <td>{reg.hora_salida ? formatFecha(reg.hora_salida) : <span style={{color:'var(--brand-green)'}}>Dentro</span>}</td>
                 <td>{formatDuracion(reg.minutos_total)}</td>
                 <td className={s.totalCell}>{reg.total_cobrado ? formatMoneda(reg.total_cobrado) : '—'}</td>
                 <td>
@@ -119,13 +123,17 @@ export default function Registros() {
             className={s.pageBtn}
             disabled={filtros.offset === 0}
             onClick={() => setFiltros(p => ({ ...p, offset: Math.max(0, p.offset - p.limit) }))}
-          >← Anterior</button>
+          >
+            <ArrowLeft size={16} /> Anterior
+          </button>
           <span className={s.pageInfo}>Página {pagina} de {totalPags}</span>
           <button
             className={s.pageBtn}
             disabled={pagina >= totalPags}
             onClick={() => setFiltros(p => ({ ...p, offset: p.offset + p.limit }))}
-          >Siguiente →</button>
+          >
+            Siguiente <ArrowRight size={16} />
+          </button>
         </div>
       )}
     </div>
