@@ -4,6 +4,7 @@ import { useParqueadero } from '../context/ParqueaderoContext';
 import { PlacaInput }     from '../components/shared/PlacaInput';
 import { formatFecha, formatDuracion, formatMoneda } from '../utils/format.utils';
 import { Search, Banknote, CreditCard, Smartphone, MoreHorizontal, ArrowUp, ArrowLeft, CheckCircle, Printer, Plus, AlertCircle } from 'lucide-react';
+import { TicketRecibo } from '../components/shared/TicketRecibo';
 import s from './Operacion.module.css';
 
 const STEP = { BUSCAR: 'BUSCAR', PREVIEW: 'PREVIEW', TICKET: 'TICKET' };
@@ -73,61 +74,15 @@ export default function Salida() {
   };
 
   if (step === STEP.TICKET && ticket) {
-    const c = ticket.calculo;
-    const t = ticket.ticket;
-    const metodo = METODOS_PAGO.find(m => m.id === ticket.metodoPago) || METODOS_PAGO[0];
     return (
       <div className={s.page}>
-        <div className={s.ticketWrapper}>
-          <div className={s.ticketSuccessIcon}><CheckCircle size={32} /></div>
-          <h2 className={s.ticketTitle}>Salida registrada</h2>
-
-          <div className={s.ticket}>
-            <div className={s.ticketHeader}>
-              <div className={s.ticketLogo}><ArrowUp size={24} /></div>
-              <div>
-                <p className={s.ticketCodigo}>{t?.codigoTicket ?? `TK-${ticket.registroId}`}</p>
-                <p className={s.ticketTipo}>Ticket de Salida</p>
-              </div>
-              <div className={s.ticketPagoBadge}>
-                {metodo.icon}
-                <span>{metodo.label}</span>
-              </div>
-            </div>
-
-            <div className={s.ticketBodyQR}>
-              <div className={s.ticketGrid}>
-                <div className={s.ticketField}><span>Placa</span><strong>{ticket.placa}</strong></div>
-                <div className={s.ticketField}><span>Espacio</span><strong>{ticket.espacio}</strong></div>
-                <div className={s.ticketField}><span>Entrada</span><strong>{formatFecha(c.horaEntrada)}</strong></div>
-                <div className={s.ticketField}><span>Salida</span><strong>{formatFecha(c.horaSalida)}</strong></div>
-                <div className={s.ticketField}><span>Duración</span><strong>{formatDuracion(c.minutosTotales)}</strong></div>
-                <div className={s.ticketField}><span>Tarifa/h</span><strong>{formatMoneda(c.tarifaHora)}</strong></div>
-              </div>
-              {t?.qrDataURL && (
-                <div className={s.qrContainer}>
-                  <img src={t.qrDataURL} alt="QR salida" className={s.qrImg} />
-                  <p className={s.qrLabel}>Comprobante digital</p>
-                </div>
-              )}
-            </div>
-
-            <div className={s.totalCobro}>
-              <span>Total cobrado</span>
-              <div className={s.totalCobroPagoBadge}>
-                <strong>{formatMoneda(c.totalCobrado)}</strong>
-                <span className={s.totalCobroMethod} style={{display:'flex', alignItems:'center', gap:'4px'}}>{React.cloneElement(metodo.icon, {size:12})} {metodo.label}</span>
-              </div>
-            </div>
-
-            <p className={s.ticketNote}>Gracias por usar nuestro parqueadero · {new Date().toLocaleDateString('es-CO')}</p>
-          </div>
-
-          <div className={s.ticketActions}>
-            <button className={s.btnPrint} onClick={() => window.print()}><Printer size={16}/> Imprimir</button>
-            <button className="btn-primary" onClick={handleNuevo} style={{flex:2}}><Plus size={16}/> Nueva salida</button>
-          </div>
-        </div>
+        <TicketRecibo
+          ticketData={ticket}
+          tipo="SALIDA"
+          onAction={handleNuevo}
+          actionLabel="Nueva salida"
+          actionIcon={<Plus size={16} />}
+        />
       </div>
     );
   }

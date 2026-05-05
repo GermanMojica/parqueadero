@@ -9,16 +9,18 @@ const POLL_INTERVAL_MS = 30_000; // 30 segundos
 
 export function ParqueaderoProvider({ children }) {
   const { isAuthenticated } = useAuth();
-  const [resumen, setResumen]   = useState([]);
-  const [loading, setLoading]   = useState(false);
-  const [error,   setError]     = useState(null);
-  const intervalRef             = useRef(null);
+  const [resumen,       setResumen]       = useState([]);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState(null);
+  const [refreshCount,  setRefreshCount]  = useState(0); // se incrementa en cada fetch exitoso
+  const intervalRef = useRef(null);
 
   const fetchResumen = useCallback(async () => {
     try {
       setError(null);
       const data = await espaciosApi.getResumen();
       setResumen(data);
+      setRefreshCount(c => c + 1); // dispara animación de flash en componentes que escuchen
     } catch (err) {
       setError(err.message);
     } finally {
@@ -43,6 +45,7 @@ export function ParqueaderoProvider({ children }) {
     resumen,       // Array de { tipo_vehiculo, capacidad_total, disponibles, ocupados, ... }
     loading,
     error,
+    refreshCount,  // número que aumenta cada vez que se refresca — úsalo como key para animar
     refetch: fetchResumen,  // Para llamar manualmente tras registrar entrada/salida
   };
 

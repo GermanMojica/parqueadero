@@ -5,8 +5,10 @@ import { useParqueadero } from '../context/ParqueaderoContext';
 import { formatFecha, formatDuracion, formatMoneda } from '../utils/format.utils';
 import { 
   Map as MapIcon, RefreshCw, Loader2, Bike, Truck, Car,
-  Banknote, CreditCard, Smartphone, MoreHorizontal, CheckCircle
+  Banknote, CreditCard, Smartphone, MoreHorizontal, CheckCircle, Printer
 } from 'lucide-react';
+import { ticketsApi } from '../api/index';
+import { TicketRecibo } from '../components/shared/TicketRecibo';
 import s from './MapaParqueadero.module.css';
 
 const ESTADO_CFG = {
@@ -67,6 +69,7 @@ export default function MapaParqueadero() {
   const [pagoError,  setPagoError]  = useState('');
   const [salidaOk,   setSalidaOk]   = useState(null);
   const [filtro,     setFiltro]     = useState('TODOS');
+  const [entranceTicket, setEntranceTicket] = useState(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -105,12 +108,26 @@ export default function MapaParqueadero() {
     }
   };
 
+  const handleImprimirEntrada = async () => {
+    if (!preview?.registro?.id) return;
+    try {
+      const tickets = await ticketsApi.getByRegistro(preview.registro.id);
+      const entrada = tickets.find(t => t.tipo === 'ENTRADA');
+      if (entrada) {
+        setEntranceTicket(entrada.datos_json);
+      }
+    } catch (err) {
+      console.error('Error al recuperar ticket:', err);
+    }
+  };
+
   const cerrarModal = () => {
     setSeleccion(null);
     setPreview(null);
     setSalidaOk(null);
     setMetodoPago('');
     setPagoError('');
+    setEntranceTicket(null);
   };
 
   const grupos = espacios.reduce((acc, e) => {
@@ -213,20 +230,25 @@ export default function MapaParqueadero() {
         <div className={s.modalOverlay} onClick={cerrarModal}>
           <div className={s.modal} onClick={e => e.stopPropagation()}>
             {salidaOk ? (
-              <>
-                <div className={s.modalHeader}>
-                  <span className={s.modalTitle}>
-                    <CheckCircle size={24} color="var(--brand-green)" /> Salida registrada
-                  </span>
-                  <span className={s.modalBadge} style={{ background:'rgba(62,207,142,0.1)', color:'var(--brand-green)' }}>COMPLETADO</span>
-                </div>
-                <div className={s.modalBody}>
-                  <div className={s.modalRow}><span>Placa</span><strong>{salidaOk.placa}</strong></div>
-                  <div className={s.modalRow}><span>Duración</span><strong>{formatDuracion(salidaOk.calculo?.minutosTotales)}</strong></div>
-                  <div className={s.modalRow}><span>Total cobrado</span><strong style={{ color:'var(--brand-green)', fontSize:'1.1rem' }}>{formatMoneda(salidaOk.calculo?.totalEstimado ?? salidaOk.calculo?.totalCobrado)}</strong></div>
-                </div>
-                <button className={s.modalClose} onClick={cerrarModal}>Cerrar</button>
-              </>
+              <div className={s.ticketModalWrapper}>
+                <TicketRecibo
+                  ticketData={salidaOk.ticket}
+                  tipo="SALIDA"
+                  onAction={cerrarModal}
+                  actionLabel="Finalizar"
+                  actionIcon={<CheckCircle size={16} />}
+                />
+              </div>
+            ) : entranceTicket ? (
+              <div className={s.ticketModalWrapper}>
+                <TicketRecibo
+                  ticketData={entranceTicket}
+                  tipo="ENTRADA"
+                  onAction={() => setEntranceTicket(null)}
+                  actionLabel="Volver al detalle"
+                  actionIcon={<MoreHorizontal size={16} />}
+                />
+              </div>
             ) : (
               <>
                 <div className={s.modalHeader}>
@@ -260,7 +282,7 @@ export default function MapaParqueadero() {
 
                       <div style={{ paddingTop: 'var(--space-3)' }}>
                         <p style={{ fontFamily:'var(--font-mono)', fontSize:'var(--font-size-xs)', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'1.2px', marginBottom:'var(--space-2)' }}>
-                          Método de pago
+                          Método de pago para salida
                         </p>
                         <div className={s.pagoMiniGrid}>
                           {METODOS.map(m => (
@@ -279,10 +301,15 @@ export default function MapaParqueadero() {
                 </div>
 
                 {seleccion.estado === 'OCUPADO' && (
-                  <button className={s.btnSalidaMapa} onClick={handleSalida}
-                    disabled={loading || loadPreview}>
-                    {loading ? 'Procesando...' : 'Registrar salida desde mapa'}
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
+                    <button className={s.btnSalidaMapa} onClick={handleSalida}
+                      disabled={loading || loadPreview}>
+                      {loading ? 'Procesando...' : 'Registrar salida desde mapa'}
+                    </button>
+                    <button className={s.btnReimprimir} onClick={handleImprimirEntrada} disabled={loadPreview}>
+                      <Printer size={16} /> Ver/Imprimir Ticket de Entrada
+                    </button>
+                  </div>
                 )}
                 <button className={s.modalClose} onClick={cerrarModal}>Cerrar</button>
               </>

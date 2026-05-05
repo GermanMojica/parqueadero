@@ -4,6 +4,7 @@ import { useParqueadero } from '../context/ParqueaderoContext';
 import { formatDuracion, formatMoneda, formatFecha } from '../utils/format.utils';
 import jsQR from 'jsqr';
 import { ScanLine, Camera, StopCircle, RefreshCcw, CheckCircle, XCircle, AlertTriangle, Play, Banknote, CreditCard, Smartphone, MoreHorizontal } from 'lucide-react';
+import { TicketRecibo } from '../components/shared/TicketRecibo';
 import s from './EscanerQR.module.css';
 
 const ST = { IDLE: 'IDLE', LOADING: 'LOADING', SCANNING: 'SCANNING', PROCESANDO: 'PROCESANDO', PREVIEW: 'PREVIEW', OK: 'OK', ERROR: 'ERROR' };
@@ -316,42 +317,14 @@ export default function EscanerQR() {
 
         {/* ── Resultado OK ── */}
         {estado === ST.OK && resultado && (
-          <div className={s.resultCard}>
-            <div className={s.resultHeader}>
-              <div className={s.resultIcon}><CheckCircle size={32} /></div>
-              <div>
-                <h2 className={s.resultTitle}>Salida registrada correctamente</h2>
-                <p className={s.resultSub}>El vehículo ha sido dado de baja del sistema</p>
-              </div>
-            </div>
-
-            <div className={s.resultGrid}>
-              <div className={s.resultField}>
-                <span>Placa</span>
-                <strong>{resultado.placa}</strong>
-              </div>
-              <div className={s.resultField}>
-                <span>Espacio</span>
-                <strong>{resultado.espacio}</strong>
-              </div>
-              <div className={s.resultField}>
-                <span>Tiempo dentro</span>
-                <strong>{formatDuracion(resultado.calculo?.minutosTotales)}</strong>
-              </div>
-              <div className={s.resultField}>
-                <span>Hora salida</span>
-                <strong>{formatFecha(resultado.calculo?.horaSalida)}</strong>
-              </div>
-            </div>
-
-            <div className={s.resultTotal}>
-              <span>Total cobrado</span>
-              <strong>{formatMoneda(resultado.calculo?.totalCobrado)}</strong>
-            </div>
-
-            <button className={s.btnDetener} onClick={reiniciar} style={{marginTop: 'var(--space-4)', width: '100%'}}>
-              <ScanLine size={16}/> Escanear otro QR
-            </button>
+          <div className={s.ticketSection}>
+            <TicketRecibo
+              ticketData={resultado.ticket}
+              tipo="SALIDA"
+              onAction={reiniciar}
+              actionLabel="Escanear otro QR"
+              actionIcon={<ScanLine size={16} />}
+            />
           </div>
         )}
 

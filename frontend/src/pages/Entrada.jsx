@@ -4,6 +4,7 @@ import { useParqueadero } from '../context/ParqueaderoContext';
 import { PlacaInput }     from '../components/shared/PlacaInput';
 import { formatFecha }    from '../utils/format.utils';
 import { AlertCircle, CheckCircle, Printer, Plus, Car, Bike, Truck, ArrowDown } from 'lucide-react';
+import { TicketRecibo } from '../components/shared/TicketRecibo';
 import s from './Operacion.module.css';
 
 const tipoIcon = (t) =>
@@ -65,55 +66,15 @@ export default function Entrada() {
   const handleNuevo = () => { setTicket(null); clearError(); };
 
   if (ticket) {
-    const t = ticket.ticket;
     return (
       <div className={s.page}>
-        <div className={s.ticketWrapper}>
-          <div className={s.ticketSuccessIcon}><CheckCircle size={32} /></div>
-          <h2 className={s.ticketTitle}>Entrada registrada</h2>
-
-          <div className={s.ticket}>
-            <div className={s.ticketHeader}>
-              <div className={s.ticketLogo}><ArrowDown size={24} /></div>
-              <div>
-                <p className={s.ticketCodigo}>{t.codigoTicket}</p>
-                <p className={s.ticketTipo}>Ticket de Entrada</p>
-              </div>
-              <div className={s.ticketPagoBadge}>
-                {tipoIcon(t.tipoVehiculo)}
-                <span>{t.tipoVehiculo}</span>
-              </div>
-            </div>
-
-            <div className={s.ticketBodyQR}>
-              <div className={s.ticketGrid}>
-                <div className={s.ticketField}><span>Placa</span><strong>{t.registro.placa}</strong></div>
-                <div className={s.ticketField}><span>Espacio</span><strong>{t.espacio.codigo}</strong></div>
-                <div className={s.ticketField}><span>Tipo</span><strong>{t.tipoVehiculo}</strong></div>
-                <div className={s.ticketField}><span>Hora entrada</span><strong>{formatFecha(t.registro.horaEntrada)}</strong></div>
-                <div className={s.ticketField}><span>Operador</span><strong>{t.operador.nombre}</strong></div>
-                {t.qrPayload?.pais && t.qrPayload.pais !== 'CO' && (
-                  <div className={s.ticketField}><span>País placa</span><strong>{t.qrPayload.pais}</strong></div>
-                )}
-              </div>
-              {t.qrDataURL && (
-                <div className={s.qrContainer}>
-                  <img src={t.qrDataURL} alt="QR ticket entrada" className={s.qrImg} />
-                  <p className={s.qrLabel}>Escanear para salida</p>
-                </div>
-              )}
-            </div>
-
-            <p className={s.ticketNote}>
-              Conserve este tiquete · {new Date().toLocaleDateString('es-CO')}
-            </p>
-          </div>
-
-          <div className={s.ticketActions}>
-            <button className={s.btnPrint} onClick={() => window.print()}><Printer size={16}/> Imprimir</button>
-            <button className="btn-primary" onClick={handleNuevo} style={{flex:2}}><Plus size={16}/> Nueva entrada</button>
-          </div>
-        </div>
+        <TicketRecibo
+          ticketData={ticket.ticket}
+          tipo="ENTRADA"
+          onAction={handleNuevo}
+          actionLabel="Nueva entrada"
+          actionIcon={<Plus size={16} />}
+        />
       </div>
     );
   }
