@@ -37,8 +37,29 @@ async function getOcupacionPorHora(fecha) {
   return repo.ocupacionPorHora({ fecha: f });
 }
 
+async function getPorDia({ desde, hasta }) {
+  if (!desde || !hasta) throw new AppError('Se requieren fechas desde/hasta', 400);
+  return repo.porDia({ desde, hasta });
+}
+
+async function getHorasPico() {
+  return repo.horasPico();
+}
+
+async function getPorTipo() {
+  return repo.porTipo();
+}
+
+async function getResumenPeriodo({ desde, hasta }) {
+  if (!desde || !hasta) throw new AppError('Se requieren fechas desde/hasta', 400);
+  return repo.resumenPeriodo({ desde, hasta });
+}
+
 async function getKpisHoy()                     { return repo.kpisHoy(); }
 async function getAlertas(horasUmbral)          { return repo.alertasTiempo(horasUmbral || 12); }
 async function getPlacasFrecuentes(limite)      { return repo.placasFrecuentes(limite || 10); }
 
-module.exports = { getResumenFinanciero, getOcupacionPorHora, getKpisHoy, getAlertas, getPlacasFrecuentes };
+module.exports = { 
+  getResumenFinanciero, getOcupacionPorHora, getKpisHoy, getAlertas, getPlacasFrecuentes,
+  getPorDia, getHorasPico, getPorTipo, getResumenPeriodo
+};

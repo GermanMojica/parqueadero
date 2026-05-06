@@ -5,9 +5,11 @@ const auth       = require('../../middlewares/auth.middleware');
 
 const router = Router();
 
+// Dashboard público (para la vista de TV)
+router.get('/resumen',  ctrl.getResumen);
+
 router.use(auth);
 
 router.get('/',         ctrl.getAll);
-router.get('/resumen',  ctrl.getResumen);  // Dashboard: cupos por tipo
 
 module.exports = router;

@@ -1,0 +1,316 @@
+.page {
+  animation: fadeIn 0.4s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-bottom: var(--space-10);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  margin: 4px 0 0 0;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rangeSelector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-base);
+  border: 1px solid var(--color-border-base);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+}
+
+.rangeSelector select {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  outline: none;
+  cursor: pointer;
+}
+
+.customDates {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-base);
+  border: 1px solid var(--color-border-base);
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+}
+
+.customDates input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font-mono);
+}
+
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-border-base);
+  color: var(--text-primary);
+  border: 1px solid var(--color-border-subtle);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--ease-normal);
+}
+
+.exportBtn:hover {
+  transform: translateY(-1px);
+  background: var(--color-border-subtle);
+}
+
+.excel:hover { border-color: #22c55e; color: #22c55e; }
+.pdf:hover   { border-color: #ef4444; color: #ef4444; }
+.pbi:hover   { border-color: #facc15; color: #facc15; }
+
+.exportGroup {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media print {
+  :global(.sidebar), :global(.topbar), :global(.no-print) { 
+    display: none !important; 
+  }
+  :global(.main), :global(.content), .page {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    display: block !important;
+    background: white !important;
+  }
+  .page { gap: 20px !important; }
+  .kpis { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+  .kpiCard, .chartBox { 
+    border: 1px solid #eee !important; 
+    box-shadow: none !important; 
+    break-inside: avoid;
+    background: #fff !important;
+  }
+  .kpiValue, .chartHeader h3, .title, .kpiLabel, .legendLabel { 
+    color: #000 !important; 
+  }
+  .svgChart text { fill: #000 !important; }
+  .bar { fill: #22c55e !important; }
+  :global(body) { background: white !important; color: black !important; }
+}
+
+/* KPI Cards */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.kpiCard {
+  background: var(--color-base);
+  border: 1px solid var(--color-border-base);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.kpiIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kpiLabel {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpiValue {
+  margin: 4px 0 0 0;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+/* Charts */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.chartBox {
+  background: var(--color-base);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.chartHeader {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chartHeader h3 {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.chartBody {
+  padding: var(--space-6);
+  min-height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.svgChart {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.bar {
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+
+.bar:hover {
+  opacity: 0.8;
+}
+
+.linePath {
+  filter: drop-shadow(0 2px 4px rgba(34, 197, 94, 0.3));
+}
+
+.noData {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}
+
+/* Donut Chart */
+.donutContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  width: 100%;
+}
+
+.donutSvg {
+  width: 180px;
+  height: 180px;
+}
+
+.donutSegment {
+  transition: stroke-width 0.2s;
+  cursor: pointer;
+}
+
+.donutSegment:hover {
+  stroke-width: 16;
+}
+
+.legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legendLabel {
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.legendVal {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+@media (max-width: 1024px) {
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.error {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--color-crimson9);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}

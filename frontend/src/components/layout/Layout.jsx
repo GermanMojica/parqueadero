@@ -15,9 +15,11 @@ const NAV = [
   { to: '/salida',    label: 'Registrar Salida', icon: <ArrowUpFromLine size={18} />, roles: ['ADMIN','OPERADOR'] },
   { to: '/escaner',   label: 'Escáner QR',       icon: <ScanLine size={18} />, roles: ['ADMIN','OPERADOR'] },
   { to: '/mapa',      label: 'Mapa',             icon: <Map size={18} />, roles: ['ADMIN','OPERADOR'] },
+  { to: '/tv',        label: 'Monitor TV',       icon: <LayoutDashboard size={18} />, roles: ['ADMIN','OPERADOR'], external: true },
   { section: 'Reportes' },
   { to: '/registros', label: 'Historial',        icon: <FileText size={18} />, roles: ['ADMIN','OPERADOR'] },
   { section: 'Admin' },
+  { to: '/reportes',  label: 'Reportes',         icon: <FileText size={18} />, roles: ['ADMIN'] },
   { to: '/tarifas',   label: 'Tarifas',          icon: <DollarSign size={18} />, roles: ['ADMIN'] },
   { to: '/usuarios',  label: 'Usuarios',         icon: <Users size={18} />, roles: ['ADMIN'] },
 ];
@@ -102,6 +104,18 @@ export function Layout({ children }) {
             item.section ? (
               (!isAdmin && item.section === 'Admin') ? null :
               <div key={i} className={s.navSection}>{item.section}</div>
+            ) : item.external ? (
+              <a
+                key={item.to}
+                href={item.to}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={s.navLink}
+                onClick={() => setOpen(false)}
+              >
+                <span className={s.navIcon}>{item.icon}</span>
+                {item.label}
+              </a>
             ) : (
               <NavLink
                 key={item.to} to={item.to}

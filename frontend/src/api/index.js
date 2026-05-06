@@ -14,6 +14,7 @@ export const registrosApi = {
   previewSalida:    (placa)  => api.get(`/registros/activo/${placa}`).then(r => r.data.data),
   registrarSalida:  (data)   => api.post('/registros/salida', data).then(r => r.data.data),
   getHistorial:     (params) => api.get('/registros', { params }).then(r => r.data.data),
+  getPublicMovimientos: ()   => api.get('/registros/public-movimientos').then(r => r.data.data),
   getById:          (id)     => api.get(`/registros/${id}`).then(r => r.data.data),
   anular:           (id, d)  => api.patch(`/registros/${id}/anular`, d).then(r => r.data.data),
 };
@@ -40,7 +41,11 @@ export const ticketsApi = {
 };
 
 export const reportesApi = {
-  getFinanciero:       (p) => api.get('/reportes/financiero', { params: p }).then(r => r.data.data),
+  getResumen:      (q) => api.get('/reportes/financiero', { params: q }).then(r => r.data.data),
+  getPorDia:       (q) => api.get('/reportes/por-dia', { params: q }).then(r => r.data.data),
+  getHorasPico:    ()  => api.get('/reportes/horas-pico').then(r => r.data.data),
+  getPorTipo:      ()  => api.get('/reportes/por-tipo').then(r => r.data.data),
+  getResumenPeriodo: (q) => api.get('/reportes/resumen-periodo', { params: q }).then(r => r.data.data),
   getKpisHoy:          ()  => api.get('/reportes/kpis-hoy').then(r => r.data.data),
   getAlertas:          (h) => api.get('/reportes/alertas', { params: { horas: h } }).then(r => r.data.data),
   getPlacasFrecuentes: (n) => api.get('/reportes/placas-frecuentes', { params: { limite: n } }).then(r => r.data.data),

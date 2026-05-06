@@ -1,11 +1,18 @@
-// server.js — Solo levanta el servidor. Sin lógica de negocio.
+// server.js — Solo levanta el servidor. Sin lógica de negocio. // restart
 const app    = require('./src/app');
 const { env } = require('./src/config/env');
 const logger = require('./src/utils/logger');
 
-const PORT = env.PORT;
+const http   = require('http');
+const socket = require('./src/config/socket');
 
-app.listen(PORT, () => {
+const PORT = env.PORT;
+const server = http.createServer(app);
+
+// Inicializar Socket.io
+socket.init(server);
+
+server.listen(PORT, () => {
   logger.info(`🚀 Servidor corriendo en puerto ${PORT} [${env.NODE_ENV}]`);
 });
 

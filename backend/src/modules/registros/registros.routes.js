@@ -7,6 +7,12 @@ const { validate }   = require('../../middlewares/validate.middleware');
 
 const router = Router();
 
+// Ruta pública para la vista de TV (últimos 5 movimientos)
+router.get('/public-movimientos', (req, res, next) => {
+  req.query.limite = 5;
+  next();
+}, ctrl.getHistorial);
+
 router.use(auth);
 
 // Operaciones de taquilla — cualquier usuario autenticado

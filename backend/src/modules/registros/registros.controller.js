@@ -1,5 +1,6 @@
 // src/modules/registros/registros.controller.js
 const service         = require('./registros.service');
+const { emitUpdate }  = require('../../config/socket');
 const { ok, created } = require('../../utils/response.helper');
 const { z }           = require('zod');
 
@@ -29,6 +30,7 @@ async function registrarEntrada(req, res, next) {
       ...req.body,
       usuarioId: req.user.id,
     });
+    emitUpdate(); // Notificar a los clientes en tiempo real
     created(res, result);
   } catch (e) { next(e); }
 }
@@ -41,7 +43,9 @@ async function previewSalida(req, res, next) {
 
 async function registrarSalida(req, res, next) {
   try {
-    ok(res, await service.registrarSalida({ ...req.body, usuarioId: req.user.id }));
+    const result = await service.registrarSalida({ ...req.body, usuarioId: req.user.id });
+    emitUpdate(); // Notificar a los clientes en tiempo real
+    ok(res, result);
   } catch (e) { next(e); }
 }
 
@@ -55,7 +59,9 @@ async function getById(req, res, next) {
 
 async function anular(req, res, next) {
   try {
-    ok(res, await service.anular(Number(req.params.id), { ...req.body, usuarioId: req.user.id }));
+    const result = await service.anular(Number(req.params.id), { ...req.body, usuarioId: req.user.id });
+    emitUpdate(); // Notificar a los clientes en tiempo real
+    ok(res, result);
   } catch (e) { next(e); }
 }
 

@@ -104,4 +104,65 @@ async function placasFrecuentes(limite = 10) {
   return rows;
 }
 
-module.exports = { resumenFinanciero, ocupacionPorHora, kpisHoy, alertasTiempo, placasFrecuentes };
+/** Ingresos y cantidad de vehículos por día */
+async function porDia({ desde, hasta }) {
+  const [rows] = await pool.execute(
+    `SELECT 
+       DATE(hora_entrada) as fecha,
+       COUNT(*) as cantidad,
+       SUM(total_cobrado) as ingresos
+     FROM registros 
+     WHERE DATE(hora_entrada) BETWEEN ? AND ?
+     GROUP BY DATE(hora_entrada)
+     ORDER BY fecha ASC`,
+    [desde, hasta]
+  );
+  return rows;
+}
+
+/** Horas pico (promedio histórico) */
+async function horasPico() {
+  const [rows] = await pool.execute(
+    `SELECT 
+       HOUR(hora_entrada) as hora,
+       COUNT(*) as cantidad
+     FROM registros
+     GROUP BY HOUR(hora_entrada)
+     ORDER BY hora ASC`
+  );
+  return rows;
+}
+
+/** Distribución por tipo de vehículo */
+async function porTipo() {
+  const [rows] = await pool.execute(
+    `SELECT 
+       tv.nombre as tipo,
+       COUNT(r.id) as cantidad,
+       SUM(r.total_cobrado) as ingresos
+     FROM registros r
+     JOIN tipos_vehiculo tv ON tv.id = r.tipo_vehiculo_id
+     GROUP BY tv.id, tv.nombre`
+  );
+  return rows;
+}
+
+/** Resumen total del periodo */
+async function resumenPeriodo({ desde, hasta }) {
+  const [[res]] = await pool.execute(
+    `SELECT 
+       COUNT(*) as total_vehiculos,
+       COALESCE(SUM(total_cobrado), 0) as total_ingresos,
+       COALESCE(AVG(minutos_total), 0) as tiempo_promedio,
+       COALESCE(SUM(total_cobrado) / NULLIF(COUNT(*), 0), 0) as ingreso_promedio
+     FROM registros
+     WHERE DATE(hora_entrada) BETWEEN ? AND ?`,
+    [desde, hasta]
+  );
+  return res;
+}
+
+module.exports = { 
+  resumenFinanciero, ocupacionPorHora, kpisHoy, alertasTiempo, placasFrecuentes,
+  porDia, horasPico, porTipo, resumenPeriodo
+};
