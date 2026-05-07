@@ -77,36 +77,41 @@ export function PlacaInput({ value = '', onChange, disabled, autoFocus }) {
         )}
       </div>
 
-      {/* Input principal */}
-      <div className={s.inputWrapper}>
-        <input
-          className={`${s.input} ${validation?.valida === false ? s.inputError : ''} ${validation?.valida ? s.inputOk : ''}`}
-          value={raw}
-          onChange={handlePlacaChange}
-          placeholder={tipoActual?.mascara ?? 'ABC-123'}
-          maxLength={(tipoActual?.maxLen ?? 6) + (pais === 'CO' ? 1 : 2)}
-          disabled={disabled}
-          autoFocus={autoFocus}
-          autoCapitalize="characters"
-          spellCheck={false}
-        />
-        
-        <div className={s.inputActions}>
-          <button 
-            type="button" 
-            className={s.ocrBtn} 
-            onClick={() => setShowOcr(true)}
+      {/* Input principal y Botón OCR */}
+      <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch' }}>
+        <div className={s.inputWrapper} style={{ flex: 1 }}>
+          <input
+            className={`${s.input} ${validation?.valida === false ? s.inputError : ''} ${validation?.valida ? s.inputOk : ''}`}
+            value={raw}
+            onChange={handlePlacaChange}
+            placeholder={tipoActual?.mascara ?? 'ABC-123'}
+            maxLength={(tipoActual?.maxLen ?? 6) + (pais === 'CO' ? 1 : 2)}
             disabled={disabled}
-            title="Escanear placa con la cámara"
-          >
-            <Camera size={18} />
-          </button>
-          {validation && (
-            <span className={`${s.icon} ${validation.valida ? s.iconOk : s.iconErr}`}>
-              {validation.valida ? <Check size={16} /> : <X size={16} />}
-            </span>
-          )}
+            autoFocus={autoFocus}
+            autoCapitalize="characters"
+            spellCheck={false}
+          />
+          
+          <div className={s.inputActions}>
+            {validation && (
+              <span className={`${s.icon} ${validation.valida ? s.iconOk : s.iconErr}`}>
+                {validation.valida ? <Check size={16} /> : <X size={16} />}
+              </span>
+            )}
+          </div>
         </div>
+
+        <button 
+          type="button" 
+          className="btn-secondary" 
+          onClick={() => setShowOcr(true)}
+          disabled={disabled}
+          title="Escanear placa con la cámara"
+          style={{ padding: '0 var(--space-4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid var(--brand-green)', color: 'var(--brand-green)' }}
+        >
+          <Camera size={20} />
+          <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Leer Placa</span>
+        </button>
       </div>
 
       {/* Mensaje de validación */}

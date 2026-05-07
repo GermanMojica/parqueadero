@@ -10,4 +10,12 @@ async function getResumen(req, res, next) {
   try { ok(res, await service.getResumen()); } catch (e) { next(e); }
 }
 
-module.exports = { getAll, getResumen };
+async function updateEstado(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+    ok(res, await service.updateEstado(id, estado));
+  } catch (e) { next(e); }
+}
+
+module.exports = { getAll, getResumen, updateEstado };

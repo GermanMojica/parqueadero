@@ -11,5 +11,6 @@ router.get('/resumen',  ctrl.getResumen);
 router.use(auth);
 
 router.get('/',         ctrl.getAll);
+router.patch('/:id/estado', ctrl.updateEstado);
 
 module.exports = router;

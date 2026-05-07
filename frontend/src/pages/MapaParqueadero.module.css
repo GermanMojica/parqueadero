@@ -257,10 +257,10 @@
 .disponible .espacioEstado { color: var(--brand-green); }
 
 .ocupado .espacioCodigo,
-.ocupado .espacioEstado { color: var(--color-crimson4); }
+.ocupado .espacioEstado { color: var(--color-crimson4); } /* Bright red for contrast */
 
 .mantenimiento .espacioCodigo,
-.mantenimiento .espacioEstado { color: var(--color-yellowA7); }
+.mantenimiento .espacioEstado { color: var(--color-yellowA7); } /* Bright solid yellow for contrast */
 
 .loading {
   text-align: center;

@@ -188,12 +188,16 @@ async function registrarSalida({ placa, usuarioId, metodoPago = 'EFECTIVO' }) {
     // 2. Liberar el espacio
     await espaciosRepo.setEstado(registro.espacio_id, 'DISPONIBLE', conn);
 
+    // Obtener nombre del operador de salida
+    const [[operadorRow]] = await conn.execute('SELECT nombre FROM usuarios WHERE id = ?', [usuarioId]);
+    const operadorNombre = operadorRow ? operadorRow.nombre : 'Operador';
+
     // 3. Generar ticket de salida (async — genera QR)
     const datosTicket = await buildTicketSalida({
       registro: { ...registro, hora_salida: horaSalida },
       espacio:      { id: registro.espacio_id, codigo: registro.espacio_codigo },
       tipoVehiculo: { nombre: registro.tipo_vehiculo },
-      operador:     { id: usuarioId, nombre: 'Operador' }, // se mejora con join si se necesita
+      operador:     { id: usuarioId, nombre: operadorNombre },
       calculo,
       tarifa,
     });

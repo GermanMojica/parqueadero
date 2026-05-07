@@ -215,3 +215,17 @@
   letter-spacing: 0.5px;
   margin: 0;
 }
+
+/* ── Flash Effect ───────────────────────────── */
+.flashOverlay {
+  position: absolute;
+  inset: 0;
+  background: white;
+  z-index: 10;
+  animation: flashAnim 0.15s ease-out forwards;
+}
+
+@keyframes flashAnim {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}

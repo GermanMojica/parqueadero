@@ -86,30 +86,32 @@ export default function Registros() {
               <th>Duración</th>
               <th>Total</th>
               <th>Estado</th>
-              <th>Operador</th>
+              <th>Op. Entrada</th>
+              <th>Op. Salida</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={10} className={s.loadingRow}><Loader2 size={24} className="animate-spin" style={{margin:'0 auto'}}/></td></tr>
+              <tr><td colSpan={11} className={s.loadingRow}><Loader2 size={24} className="animate-spin" style={{margin:'0 auto'}}/></td></tr>
             ) : data.data.length === 0 ? (
-              <tr><td colSpan={10} className={s.emptyRow}><FileText size={24} style={{display:'block', margin:'0 auto 8px', opacity:0.5}}/>No hay registros con los filtros aplicados</td></tr>
+              <tr><td colSpan={11} className={s.emptyRow}><FileText size={24} style={{display:'block', margin:'0 auto 8px', opacity:0.5}}/>No hay registros con los filtros aplicados</td></tr>
             ) : data.data.map(reg => (
               <tr key={reg.id} className={reg.estado === 'ABIERTO' ? s.rowActive : ''}>
-                <td className={s.idCell}>{reg.id}</td>
-                <td className={s.placaCell}>{reg.placa}</td>
-                <td>{reg.tipo_vehiculo}</td>
-                <td className={s.espacioCell}>{reg.espacio_codigo}</td>
-                <td>{formatFecha(reg.hora_entrada)}</td>
-                <td>{reg.hora_salida ? formatFecha(reg.hora_salida) : <span style={{color:'var(--brand-green)'}}>Dentro</span>}</td>
-                <td>{formatDuracion(reg.minutos_total)}</td>
-                <td className={s.totalCell}>{reg.total_cobrado ? formatMoneda(reg.total_cobrado) : '—'}</td>
-                <td>
+                <td data-label="ID" className={s.idCell}>{reg.id}</td>
+                <td data-label="Placa" className={s.placaCell}>{reg.placa}</td>
+                <td data-label="Tipo">{reg.tipo_vehiculo}</td>
+                <td data-label="Espacio" className={s.espacioCell}>{reg.espacio_codigo}</td>
+                <td data-label="Entrada">{formatFecha(reg.hora_entrada)}</td>
+                <td data-label="Salida">{reg.hora_salida ? formatFecha(reg.hora_salida) : <span style={{color:'var(--brand-green)'}}>Dentro</span>}</td>
+                <td data-label="Duración">{formatDuracion(reg.minutos_total)}</td>
+                <td data-label="Total" className={s.totalCell}>{reg.total_cobrado ? formatMoneda(reg.total_cobrado) : '—'}</td>
+                <td data-label="Estado">
                   <span className={`${s.badge} ${s[`badge_${reg.estado}`]}`}>
                     {reg.estado}
                   </span>
                 </td>
-                <td className={s.operadorCell}>{reg.operador_entrada}</td>
+                <td data-label="Op. Entrada" className={s.operadorCell}>{reg.operador_entrada}</td>
+                <td data-label="Op. Salida" className={s.operadorCell}>{reg.operador_salida || '—'}</td>
               </tr>
             ))}
           </tbody>

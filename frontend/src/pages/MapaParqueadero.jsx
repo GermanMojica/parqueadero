@@ -121,6 +121,17 @@ export default function MapaParqueadero() {
     }
   };
 
+  const handleMantenimiento = async (estado) => {
+    try {
+      await espaciosApi.updateEstado(seleccion.id, estado);
+      refetch();
+      cargar();
+      cerrarModal();
+    } catch (err) {
+      console.error('Error al cambiar estado de mantenimiento', err);
+    }
+  };
+
   const cerrarModal = () => {
     setSeleccion(null);
     setPreview(null);
@@ -308,6 +319,20 @@ export default function MapaParqueadero() {
                     </button>
                     <button className={s.btnReimprimir} onClick={handleImprimirEntrada} disabled={loadPreview}>
                       <Printer size={16} /> Ver/Imprimir Ticket de Entrada
+                    </button>
+                  </div>
+                )}
+                {seleccion.estado === 'DISPONIBLE' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
+                    <button className={s.btnReimprimir} onClick={() => handleMantenimiento('MANTENIMIENTO')} style={{color: 'var(--color-yellowA7)', borderColor: 'var(--color-yellowA7)'}}>
+                      Poner en mantenimiento
+                    </button>
+                  </div>
+                )}
+                {seleccion.estado === 'MANTENIMIENTO' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
+                    <button className={s.btnReimprimir} onClick={() => handleMantenimiento('DISPONIBLE')} style={{color: 'var(--brand-green)', borderColor: 'var(--brand-green)'}}>
+                      Quitar mantenimiento (Habilitar)
                     </button>
                   </div>
                 )}

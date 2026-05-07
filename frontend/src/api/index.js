@@ -5,8 +5,9 @@ export const authApi = {
 };
 
 export const espaciosApi = {
-  getAll:     ()   => api.get('/espacios').then(r => r.data.data),
-  getResumen: ()   => api.get('/espacios/resumen').then(r => r.data.data),
+  getAll:       ()   => api.get('/espacios').then(r => r.data.data),
+  getResumen:   ()   => api.get('/espacios/resumen').then(r => r.data.data),
+  updateEstado: (id, estado) => api.patch(`/espacios/${id}/estado`, { estado }).then(r => r.data.data),
 };
 
 export const registrosApi = {

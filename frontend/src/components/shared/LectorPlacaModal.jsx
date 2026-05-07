@@ -1,37 +1,26 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createWorker } from 'tesseract.js';
-import { Camera, X, RefreshCcw, Loader2, CheckCircle } from 'lucide-react';
+import { Camera, X, RefreshCcw, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import s from './LectorPlacaModal.module.css';
 
-/**
- * Modal para escanear placas usando la cámara + OCR (Tesseract.js v7).
- * - Usa refs para evitar closures stale
- * - Worker reutilizable (no se crea uno nuevo por cada captura)
- * - Intervalo controlado de 2.5s (Tesseract es pesado)
- * - Pre-procesa la imagen: recorte central + binarización
- */
 export function LectorPlacaModal({ onClose, onPlacaDetected }) {
   const videoRef      = useRef(null);
   const canvasRef     = useRef(null);
   const streamRef     = useRef(null);
-  const intervalRef   = useRef(null);
-  const workerRef     = useRef(null);   // worker Tesseract reutilizable
-  const procesandoRef = useRef(false);  // mutex: evita llamadas OCR simultáneas
-  const activoRef     = useRef(true);   // false cuando se desmonta
+  const workerRef     = useRef(null);
+  const activoRef     = useRef(true);
 
-  const [estado,   setEstado]   = useState('LOADING'); // LOADING | SCANNING | PROCESANDO | ERROR | ENCONTRADO
+  // ESTADOS: INICIANDO | ESPERANDO | CAPTURANDO | EXITO | ERROR | ERROR_CAMARA
+  const [estado,   setEstado]   = useState('INICIANDO');
   const [errorMsg, setErrorMsg] = useState('');
-  const [intentos, setIntentos] = useState(0);
   const [placaOk,  setPlacaOk]  = useState('');
+  const [flash,    setFlash]    = useState(false);
 
-  // ─── Limpieza completa ────────────────────────────────────────────────────
+  // ─── Limpieza ─────────────────────────────────────────────────────────────
   const detener = useCallback(async () => {
     activoRef.current = false;
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
-    procesandoRef.current = false;
     if (workerRef.current) {
       await workerRef.current.terminate().catch(() => {});
       workerRef.current = null;
@@ -42,29 +31,25 @@ export function LectorPlacaModal({ onClose, onPlacaDetected }) {
     return () => { detener(); };
   }, [detener]);
 
-  // ─── Patrones de placas colombianas ──────────────────────────────────────
-  // Auto:  ABC123  (3 letras + 3 dígitos)
-  // Moto:  AB12C   (2 letras + 2 dígitos + 1 letra)
+  // ─── Validar placa colombiana ─────────────────────────────────────────────
+  // Auto: ABC123 (3 letras + 3 dígitos)
+  // Moto: ABC12D (3 letras + 2 dígitos + 1 letra)
   const extraerPlaca = (texto) => {
-    // Limpiar: solo A-Z y 0-9
     const limpio = texto.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    // Auto: exactamente 3 letras seguidas de 3 dígitos
+    const moto = limpio.match(/([A-Z]{3})([0-9]{2})([A-Z])/);
+    if (moto) return `${moto[1]}${moto[2]}${moto[3]}`;
     const auto = limpio.match(/([A-Z]{3})([0-9]{3})/);
     if (auto) return `${auto[1]}${auto[2]}`;
-    // Moto: 2 letras + 2 dígitos + 1 letra/número
-    const moto = limpio.match(/([A-Z]{2})([0-9]{2})([A-Z0-9])/);
-    if (moto) return `${moto[1]}${moto[2]}${moto[3]}`;
     return null;
   };
 
-  // ─── Pre-procesamiento de imagen ──────────────────────────────────────────
-  // Recorta la zona central (el recuadro guía) y binariza para mejorar OCR
+  // ─── Capturar frame y procesar ────────────────────────────────────────────
   const prepararImagen = (video, canvas) => {
     const w = video.videoWidth;
     const h = video.videoHeight;
     if (!w || !h) return null;
 
-    // Mismas proporciones que el recuadro visual (72% ancho, 38% alto, centrado)
+    // Recortar la zona del marco guía (72% w, 38% h)
     const regionW = Math.round(w * 0.72);
     const regionH = Math.round(h * 0.38);
     const regionX = Math.round((w - regionW) / 2);
@@ -79,7 +64,7 @@ export function LectorPlacaModal({ onClose, onPlacaDetected }) {
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(video, regionX, regionY, regionW, regionH, 0, 0, canvas.width, canvas.height);
 
-    // Binarización (escala de grises + umbral adaptativo simple)
+    // Binarización (aumentar contraste y escala de grises)
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
@@ -92,113 +77,78 @@ export function LectorPlacaModal({ onClose, onPlacaDetected }) {
     return canvas.toDataURL('image/png');
   };
 
-  // ─── Un ciclo de análisis OCR ─────────────────────────────────────────────
-  const analizarUnaVez = useCallback(async () => {
-    if (procesandoRef.current || !activoRef.current) return;
-    const video  = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || video.readyState < 4) return;
-    if (!workerRef.current) return;
+  const capturarAhora = async () => {
+    if (estado !== 'ESPERANDO' || !workerRef.current) return;
+    
+    // Flash effect
+    setFlash(true);
+    setTimeout(() => setFlash(false), 150);
 
-    procesandoRef.current = true;
-    if (activoRef.current) setEstado('PROCESANDO');
-
+    setEstado('CAPTURANDO');
+    
     try {
-      const dataUrl = prepararImagen(video, canvas);
-      if (!dataUrl) { procesandoRef.current = false; setEstado('SCANNING'); return; }
+      const dataUrl = prepararImagen(videoRef.current, canvasRef.current);
+      if (!dataUrl) throw new Error("No se pudo capturar la imagen");
 
       const { data: { text } } = await workerRef.current.recognize(dataUrl);
-      console.log('[OCR raw]', JSON.stringify(text));
 
       if (!activoRef.current) return;
 
       const placa = extraerPlaca(text);
       if (placa) {
-        detener();
         setPlacaOk(placa);
-        setEstado('ENCONTRADO');
-        // Pequeña pausa para mostrar confirmación visual
-        setTimeout(() => { onPlacaDetected(placa); }, 1000);
+        setEstado('EXITO');
+        setTimeout(() => {
+          if (activoRef.current) {
+            onPlacaDetected(placa);
+            cerrar();
+          }
+        }, 2000);
       } else {
-        setIntentos(n => n + 1);
-        setEstado('SCANNING');
+        setEstado('ERROR');
       }
     } catch (err) {
       console.error('[OCR error]', err);
-      if (activoRef.current) setEstado('SCANNING');
-    } finally {
-      procesandoRef.current = false;
+      if (activoRef.current) setEstado('ERROR');
     }
-  }, [detener, onPlacaDetected]);
+  };
 
-  // ─── Iniciar cámara + worker ──────────────────────────────────────────────
+  const reintentar = () => {
+    setEstado('ESPERANDO');
+  };
+
+  // ─── Iniciar ──────────────────────────────────────────────────────────────
   const iniciarCamara = useCallback(async () => {
-    // Limpiar estado previo
     activoRef.current = true;
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    procesandoRef.current = false;
-    if (workerRef.current) {
-      await workerRef.current.terminate().catch(() => {});
-      workerRef.current = null;
-    }
-
-    setErrorMsg('');
-    setIntentos(0);
-    setPlacaOk('');
-    setEstado('LOADING');
-
     try {
-      // Inicializar Tesseract worker
-      const worker = await createWorker('eng', 1, {
-        // logger: m => console.log('[Tesseract]', m),
-      });
+      const worker = await createWorker('eng');
       await worker.setParameters({
         tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-        tessedit_pageseg_mode: '8', // tratar como palabra única
+        tessedit_pageseg_mode: '7',
       });
       workerRef.current = worker;
 
-      // Acceder a la cámara
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width:  { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: { facingMode: { ideal: 'environment' } },
       });
 
       if (!activoRef.current) { stream.getTracks().forEach(t => t.stop()); return; }
-
       streamRef.current = stream;
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-
-      setEstado('SCANNING');
-
-      // Analizar cada 2.5 s
-      intervalRef.current = setInterval(analizarUnaVez, 2500);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setEstado('ESPERANDO');
     } catch (e) {
       if (!activoRef.current) return;
-      setEstado('ERROR');
-      setErrorMsg(
-        e.name === 'NotAllowedError'
-          ? 'Permiso de cámara denegado. Habilítalo en la configuración del navegador.'
-          : `Error: ${e.message}`
-      );
+      setEstado('ERROR_CAMARA');
+      setErrorMsg('Permiso de cámara denegado o dispositivo sin cámara.');
     }
-  }, [analizarUnaVez]);
+  }, []);
 
   useEffect(() => {
     iniciarCamara();
   }, [iniciarCamara]);
-
-  // ─── Captura manual ───────────────────────────────────────────────────────
-  const capturarAhora = () => {
-    if (estado === 'SCANNING') analizarUnaVez();
-  };
 
   const cerrar = () => { detener(); onClose(); };
 
@@ -209,7 +159,7 @@ export function LectorPlacaModal({ onClose, onPlacaDetected }) {
         <div className={s.header}>
           <div className={s.titleBox}>
             <Camera size={18} />
-            <span>Lector de Placas (IA)</span>
+            <span>Lector de Placas OCR</span>
           </div>
           <button className={s.closeBtn} onClick={cerrar} title="Cerrar">
             <X size={20} />
@@ -220,55 +170,56 @@ export function LectorPlacaModal({ onClose, onPlacaDetected }) {
         <div className={s.viewfinder}>
           <video ref={videoRef} className={s.video} playsInline muted autoPlay />
           <canvas ref={canvasRef} style={{ display: 'none' }} />
+          
+          {flash && <div className={s.flashOverlay} />}
 
-          {/* Cargando */}
-          {estado === 'LOADING' && (
+          {estado === 'INICIANDO' && (
             <div className={s.overlayState}>
               <Loader2 size={32} className="animate-spin" />
               <span>Iniciando cámara y motor OCR...</span>
             </div>
           )}
 
-          {/* Procesando OCR */}
-          {estado === 'PROCESANDO' && (
-            <div className={s.overlayState}>
-              <Loader2 size={32} className="animate-spin" />
-              <span>Analizando imagen...</span>
-              {intentos > 0 && (
-                <span style={{ fontSize: 11, opacity: 0.65 }}>Intento #{intentos + 1}</span>
-              )}
+          {estado === 'ERROR_CAMARA' && (
+            <div className={s.overlayState} style={{ color: 'var(--color-crimson4)' }}>
+              <AlertCircle size={44} />
+              <span style={{ textAlign: 'center', lineHeight: 1.6, maxWidth: 280 }}>{errorMsg}</span>
             </div>
           )}
 
-          {/* Error */}
+          {estado === 'CAPTURANDO' && (
+            <div className={s.overlayState}>
+              <Loader2 size={32} className="animate-spin" />
+              <span>Analizando placa...</span>
+            </div>
+          )}
+
           {estado === 'ERROR' && (
             <div className={s.overlayState} style={{ color: 'var(--color-crimson4)' }}>
-              <span style={{ textAlign: 'center', lineHeight: 1.6, maxWidth: 280 }}>{errorMsg}</span>
-              <button className={s.retryBtn} onClick={iniciarCamara}>
+              <span style={{ textAlign: 'center', lineHeight: 1.6, maxWidth: 280 }}>No se reconoció la placa, intenta de nuevo</span>
+              <button className={s.retryBtn} onClick={reintentar}>
                 <RefreshCcw size={16} /> Reintentar
               </button>
             </div>
           )}
 
-          {/* Placa encontrada */}
-          {estado === 'ENCONTRADO' && (
+          {estado === 'EXITO' && (
             <div className={s.overlayState} style={{ color: 'var(--brand-green)' }}>
               <CheckCircle size={44} />
               <span style={{
-                fontSize: 28,
+                fontSize: 32,
                 fontFamily: 'var(--font-mono)',
                 fontWeight: 700,
-                letterSpacing: 6,
+                letterSpacing: 4,
                 textShadow: '0 0 20px rgba(0,255,100,0.4)',
               }}>
                 {placaOk}
               </span>
-              <span style={{ fontSize: 13, opacity: 0.9 }}>¡Placa detectada!</span>
+              <span style={{ fontSize: 13, opacity: 0.9 }}>Placa reconocida</span>
             </div>
           )}
 
-          {/* Escaneando — encuadre guía */}
-          {estado === 'SCANNING' && (
+          {estado === 'ESPERANDO' && (
             <>
               <div className={s.scanTarget}>
                 <div className={`${s.corner} ${s.tl}`} />
@@ -277,28 +228,17 @@ export function LectorPlacaModal({ onClose, onPlacaDetected }) {
                 <div className={`${s.corner} ${s.br}`} />
                 <div className={s.scanLine} />
               </div>
-              <p className={s.hint}>
-                {intentos === 0
-                  ? 'Ubica la placa dentro del recuadro'
-                  : `Reintentando… (${intentos} intento${intentos !== 1 ? 's' : ''})`}
-              </p>
+              <p className={s.hint}>Acerca la cámara a la placa con buena luz</p>
             </>
           )}
         </div>
 
-        {/* Footer: botón de captura manual */}
-        {(estado === 'SCANNING' || estado === 'PROCESANDO') && (
+        {/* Footer */}
+        {estado === 'ESPERANDO' && (
           <div className={s.footer}>
-            <button
-              className={s.captureBtn}
-              onClick={capturarAhora}
-              disabled={estado === 'PROCESANDO'}
-            >
-              {estado === 'PROCESANDO'
-                ? <><Loader2 size={16} className="animate-spin" /> Analizando...</>
-                : <><Camera size={16} /> Capturar ahora</>}
+            <button className={s.captureBtn} onClick={capturarAhora}>
+              <Camera size={16} /> Capturar
             </button>
-            <p className={s.autoHint}>Analiza automáticamente cada 2.5 s</p>
           </div>
         )}
       </div>

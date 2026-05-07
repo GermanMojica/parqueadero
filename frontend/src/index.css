@@ -29,12 +29,12 @@
   --text-dark: #4d4d4d;
 
   /* ── Radix Tokens (HSL for Translucency) ── */
-  --color-crimson4: hsl(336, 35%, 15%);
+  --color-crimson4: #ef4444; /* Changed to solid bright red for contrast */
   --color-crimsonA9: hsla(336, 100%, 54%, 0.1);
   --color-purple5: hsl(275, 41%, 20%);
   --color-violet10: hsl(251, 63.2%, 63.2%);
   --color-indigoA2: hsla(226, 100%, 58%, 0.04);
-  --color-yellowA7: hsla(43, 100%, 50%, 0.2);
+  --color-yellowA7: #eab308; /* Changed to solid bright yellow for contrast */
   --color-tomatoA4: hsla(10, 100%, 50%, 0.1);
   --color-slate5: hsl(206, 14%, 18%);
   
