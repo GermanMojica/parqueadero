@@ -33,9 +33,6 @@ pool.getConnection()
  * Ejecuta una función dentro de una transacción MySQL.
  * Si la función lanza, hace ROLLBACK automático.
  * Si termina bien, hace COMMIT.
- *
- * @param {(conn: import('mysql2/promise').PoolConnection) => Promise<T>} fn
- * @returns {Promise<T>}
  */
 async function withTransaction(fn) {
   const conn = await pool.getConnection();
@@ -51,5 +48,51 @@ async function withTransaction(fn) {
     conn.release();
   }
 }
+
+// ============================================================================
+// MONKEY PATCHING PARA DEBUGGING Y PREVENCIÓN DE CRASHES (REQUISITO 4, 6, 8)
+// ============================================================================
+function validateAndLogQuery(sql, values) {
+  console.log('------ SQL EXECUTE ------');
+  console.log('QUERY:', sql.replace(/\s+/g, ' ').trim());
+  console.log('PARAMS:', values);
+  
+  if (values && Array.isArray(values)) {
+    const undefinedIndex = values.findIndex(v => v === undefined);
+    if (undefinedIndex !== -1) {
+      const errorMsg = `[SQL_ERROR] Parametro 'undefined' detectado en la posición [${undefinedIndex}]`;
+      console.error('❌', errorMsg);
+      throw new Error(`${errorMsg}. No se ejecutó la query para prevenir un crash.`);
+    }
+
+    const questionMarks = (sql.match(/\?/g) || []).length;
+    if (questionMarks !== values.length) {
+       console.warn(`⚠️ [SQL_WARNING] La cantidad de '?' (${questionMarks}) no coincide con los parámetros (${values.length})`);
+    }
+  } else if (values && typeof values === 'object' && !Array.isArray(values)) {
+    console.warn(`⚠️ [SQL_WARNING] Se están enviando objetos en lugar de arrays como parámetros. Esto puede causar fallos.`);
+  }
+  console.log('-------------------------');
+}
+
+const originalPoolExecute = pool.execute;
+pool.execute = async function (sql, values) {
+  validateAndLogQuery(sql, values);
+  return originalPoolExecute.apply(this, arguments);
+};
+
+const originalGetConnection = pool.getConnection;
+pool.getConnection = async function () {
+  const conn = await originalGetConnection.call(this);
+  if (!conn._isPatched) {
+    const origConnExecute = conn.execute;
+    conn.execute = async function (sql, values) {
+      validateAndLogQuery(sql, values);
+      return origConnExecute.apply(this, arguments);
+    };
+    conn._isPatched = true;
+  }
+  return conn;
+};
 
 module.exports = { pool, withTransaction };

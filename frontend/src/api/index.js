@@ -42,13 +42,11 @@ export const ticketsApi = {
 };
 
 export const reportesApi = {
-  getResumen:      (q) => api.get('/reportes/financiero', { params: q }).then(r => r.data.data),
-  getPorDia:       (q) => api.get('/reportes/por-dia', { params: q }).then(r => r.data.data),
-  getHorasPico:    ()  => api.get('/reportes/horas-pico').then(r => r.data.data),
-  getPorTipo:      ()  => api.get('/reportes/por-tipo').then(r => r.data.data),
-  getResumenPeriodo: (q) => api.get('/reportes/resumen-periodo', { params: q }).then(r => r.data.data),
-  getKpisHoy:          ()  => api.get('/reportes/kpis-hoy').then(r => r.data.data),
-  getAlertas:          (h) => api.get('/reportes/alertas', { params: { horas: h } }).then(r => r.data.data),
+  getListado:      (q) => api.get('/reportes/listado', { params: q }).then(r => r.data.data),
+  getResumen:      (q) => api.get('/reportes/resumen', { params: q }).then(r => r.data.data),
+  getOcupacionHora: (q) => api.get('/reportes/ocupacion-hora', { params: q }).then(r => r.data.data),
+  getKpisHoy:      ()  => api.get('/reportes/kpis').then(r => r.data.data),
+  getAlertas:      (h) => api.get('/reportes/alertas', { params: { horas: h } }).then(r => r.data.data),
   getPlacasFrecuentes: (n) => api.get('/reportes/placas-frecuentes', { params: { limite: n } }).then(r => r.data.data),
 };
 
@@ -56,4 +54,30 @@ export const descuentosApi = {
   getTipos:  ()               => api.get('/descuentos').then(r => r.data.data),
   aplicar:   (rid, data)      => api.post(`/descuentos/registro/${rid}`, data).then(r => r.data.data),
 };
+
+export const reservasApi = {
+  crear:      (data)           => api.post('/reservas', data).then(r => r.data.data),
+  listar:     (params)         => api.get('/reservas', { params }).then(r => r.data.data),
+  cancelar:   (id)             => api.patch(`/reservas/${id}/cancelar`).then(r => r.data.data),
+  convertir:  (codigo)         => api.post(`/reservas/${codigo}/convertir`).then(r => r.data.data),
+};
+
+export const notificacionesApi = {
+  suscribirPush:      (data) => api.post('/notificaciones/suscribir', data).then(r => r.data.data),
+  getPreferencias:    ()     => api.get('/notificaciones/preferencias').then(r => r.data.data),
+  updatePreferencias: (data) => api.put('/notificaciones/preferencias', data).then(r => r.data.data),
+};
+
+export const sedesApi = {
+  getAll: () => api.get('/sedes').then(r => r.data.data),
+};
+
+export const fidelizacionApi = {
+  getReglas:    ()      => api.get('/fidelizacion/reglas').then(r => r.data.data),
+  crearTarjeta: (placa) => api.post('/fidelizacion/tarjetas', { placa }).then(r => r.data.data),
+  getTarjeta:   (id)    => api.get(`/fidelizacion/tarjetas/${id}`).then(r => r.data.data),
+  canjear:      (data)  => api.post('/fidelizacion/canjear', data).then(r => r.data.data),
+  getDashboard: ()      => api.get('/fidelizacion/dashboard').then(r => r.data.data),
+};
+
 

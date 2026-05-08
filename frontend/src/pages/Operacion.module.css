@@ -41,6 +41,9 @@
 
 .formBody { 
   padding: var(--space-6) var(--space-8); 
+}
+
+.formWrapper {
   display: flex; 
   flex-direction: column; 
   gap: var(--space-5); 
@@ -66,9 +69,9 @@
 
 .errorBox {
   margin: 0 var(--space-8);
-  background: var(--color-crimsonA9);
-  border: 1px solid var(--color-border-base);
-  color: var(--text-primary);
+  background: rgba(224, 60, 60, 0.1);
+  border: 1px solid rgba(224, 60, 60, 0.2);
+  color: var(--color-crimson4);
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-4);
   font-size: var(--font-size-sm);
@@ -76,6 +79,18 @@
   align-items: center;
   gap: var(--space-2);
   animation: fadeIn 0.2s var(--ease-normal);
+}
+
+.welcomeBox {
+  background: rgba(62, 207, 142, 0.08);
+  border: 1px solid rgba(62, 207, 142, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--brand-green);
+  animation: slideDown 0.4s var(--ease-slow) both;
 }
 
 /* ══ Tipos de vehículo ══ */
@@ -105,6 +120,30 @@
 .radioHidden { display: none; }
 .tipoNombre  { font-weight: 400; font-size: var(--font-size-sm); color: var(--text-primary); display:flex; align-items:center; gap:8px;}
 .tipoDisponibles { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; }
+
+.clearBtn {
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  align-self: flex-start;
+  transition: color 0.2s ease;
+}
+
+.clearBtn:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.clearBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ══ Botón submit ══ */
 .submitBtn {

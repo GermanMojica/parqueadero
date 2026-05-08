@@ -1,7 +1,7 @@
 // src/modules/espacios/espacios.repository.js
 const { pool } = require('../../config/db');
 
-async function findAll(conn = null) {
+async function findAll(sedeId, conn = null) {
   const db = conn || pool;
   const [rows] = await db.execute(
     `SELECT e.id, e.codigo, e.estado,
@@ -10,41 +10,42 @@ async function findAll(conn = null) {
      FROM espacios e
      JOIN tipos_vehiculo tv ON tv.id = e.tipo_vehiculo_id
      LEFT JOIN registros r  ON r.espacio_id = e.id AND r.estado = 'ABIERTO'
+     WHERE e.sede_id = ?
      ORDER BY tv.nombre, e.codigo`,
+    [sedeId]
   );
   return rows;
 }
 
-async function findDisponibleByTipo(tipoVehiculoId, conn) {
-  // SELECT FOR UPDATE: bloquea la fila durante la transacción
-  // Previene la race condition de cupos simultáneos
+async function findDisponibleByTipo(sedeId, tipoVehiculoId, conn) {
   const db = conn || pool;
   const [rows] = await db.execute(
     `SELECT id, codigo FROM espacios
-     WHERE tipo_vehiculo_id = ? AND estado = 'DISPONIBLE'
+     WHERE tipo_vehiculo_id = ? AND sede_id = ? AND estado = 'DISPONIBLE'
      LIMIT 1
      FOR UPDATE`,
-    [tipoVehiculoId],
+    [tipoVehiculoId, sedeId],
   );
   return rows[0] || null;
 }
 
-async function countDisponibles() {
+async function countDisponibles(sedeId) {
   const [rows] = await pool.execute(
     `SELECT tv.id, tv.nombre AS tipo_vehiculo, tv.capacidad_total,
             SUM(CASE WHEN e.estado = 'DISPONIBLE'    THEN 1 ELSE 0 END) AS disponibles,
             SUM(CASE WHEN e.estado = 'OCUPADO'       THEN 1 ELSE 0 END) AS ocupados,
             SUM(CASE WHEN e.estado = 'MANTENIMIENTO' THEN 1 ELSE 0 END) AS en_mantenimiento
      FROM tipos_vehiculo tv
-     LEFT JOIN espacios e ON e.tipo_vehiculo_id = tv.id
+     LEFT JOIN espacios e ON e.tipo_vehiculo_id = tv.id AND e.sede_id = ?
      GROUP BY tv.id, tv.nombre, tv.capacidad_total`,
+    [sedeId]
   );
   return rows;
 }
 
-async function setEstado(id, estado, conn = null) {
+async function setEstado(id, estado, sedeId, conn = null) {
   const db = conn || pool;
-  await db.execute('UPDATE espacios SET estado = ? WHERE id = ?', [estado, id]);
+  await db.execute('UPDATE espacios SET estado = ? WHERE id = ? AND sede_id = ?', [estado, id, sedeId]);
 }
 
 module.exports = { findAll, findDisponibleByTipo, countDisponibles, setEstado };

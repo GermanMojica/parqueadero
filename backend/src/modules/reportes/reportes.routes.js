@@ -2,18 +2,20 @@
 const { Router }     = require('express');
 const ctrl           = require('./reportes.controller');
 const auth           = require('../../middlewares/auth.middleware');
-const { requireRol } = require('../../middlewares/roles.middleware');
+const sedeMiddleware = require('../../middlewares/sede.middleware');
 
 const router = Router();
-router.use(auth, requireRol('ADMIN'));
 
-router.get('/financiero',        ctrl.getResumen);
-router.get('/por-dia',           ctrl.getPorDia);
-router.get('/horas-pico',        ctrl.getHorasPico);
-router.get('/por-tipo',          ctrl.getPorTipo);
-router.get('/resumen-periodo',    ctrl.getResumenPeriodo);
-router.get('/kpis-hoy',         ctrl.getKpisHoy);
-router.get('/alertas',          ctrl.getAlertas);           // ?horas=12
-router.get('/placas-frecuentes', ctrl.getPlacasFrecuentes); // ?limite=10
+// Todas las rutas requieren autenticación y middleware de sede
+router.use(auth);
+router.use(sedeMiddleware);
+
+router.get('/listado',            ctrl.getListado);
+router.get('/resumen',            ctrl.getResumen);
+router.get('/ocupacion-hora',     ctrl.getOcupacion);
+router.get('/kpis',               ctrl.getKpisHoy);
+router.get('/alertas',            ctrl.getAlertas);
+router.get('/placas-frecuentes',  ctrl.getPlacasFrecuentes);
+router.get('/exportar',           ctrl.exportarReporte);
 
 module.exports = router;

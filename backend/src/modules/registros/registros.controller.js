@@ -18,6 +18,7 @@ const entradaSchema = z.object({
 const salidaSchema = z.object({
   placa:      placaSchema,
   metodoPago: z.enum(['EFECTIVO','TARJETA','TRANSFERENCIA','OTRO']).optional().default('EFECTIVO'),
+  canjearPuntos: z.boolean().optional().default(false),
 });
 
 const anularSchema = z.object({
@@ -29,6 +30,7 @@ async function registrarEntrada(req, res, next) {
     const result = await service.registrarEntrada({
       ...req.body,
       usuarioId: req.user.id,
+      sedeId: req.sedeId,
     });
     emitUpdate(); // Notificar a los clientes en tiempo real
     created(res, result);
@@ -37,29 +39,29 @@ async function registrarEntrada(req, res, next) {
 
 async function previewSalida(req, res, next) {
   try {
-    ok(res, await service.previewSalida(req.params.placa.toUpperCase()));
+    ok(res, await service.previewSalida(req.params.placa.toUpperCase(), req.sedeId));
   } catch (e) { next(e); }
 }
 
 async function registrarSalida(req, res, next) {
   try {
-    const result = await service.registrarSalida({ ...req.body, usuarioId: req.user.id });
+    const result = await service.registrarSalida({ ...req.body, usuarioId: req.user.id, sedeId: req.sedeId });
     emitUpdate(); // Notificar a los clientes en tiempo real
     ok(res, result);
   } catch (e) { next(e); }
 }
 
 async function getHistorial(req, res, next) {
-  try { ok(res, await service.getHistorial(req.query)); } catch (e) { next(e); }
+  try { ok(res, await service.getHistorial({ ...req.query, sedeId: req.sedeId })); } catch (e) { next(e); }
 }
 
 async function getById(req, res, next) {
-  try { ok(res, await service.getById(Number(req.params.id))); } catch (e) { next(e); }
+  try { ok(res, await service.getById(Number(req.params.id), req.sedeId)); } catch (e) { next(e); }
 }
 
 async function anular(req, res, next) {
   try {
-    const result = await service.anular(Number(req.params.id), { ...req.body, usuarioId: req.user.id });
+    const result = await service.anular(Number(req.params.id), { ...req.body, usuarioId: req.user.id, sedeId: req.sedeId });
     emitUpdate(); // Notificar a los clientes en tiempo real
     ok(res, result);
   } catch (e) { next(e); }

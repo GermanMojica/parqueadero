@@ -12,6 +12,8 @@ import MapaParqueadero from '../pages/MapaParqueadero';
 import EscanerQR       from '../pages/EscanerQR';
 import TvDisplay       from '../pages/TvDisplay';
 import Reportes        from '../pages/Reportes';
+import Perfil          from '../pages/Perfil';
+import Fidelizacion     from '../pages/Fidelizacion';
 
 export default function AppRouter() {
   return (
@@ -27,9 +29,11 @@ export default function AppRouter() {
           <Route path="/mapa"       element={<MapaParqueadero />} />
           <Route path="/registros"  element={<Registros />} />
           <Route path="/reportes"   element={<Reportes />} />
+          <Route path="/perfil"     element={<Perfil />} />
           <Route element={<AdminRoute />}>
             <Route path="/tarifas"   element={<Tarifas />} />
             <Route path="/usuarios"  element={<Usuarios />} />
+            <Route path="/fidelizacion" element={<Fidelizacion />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

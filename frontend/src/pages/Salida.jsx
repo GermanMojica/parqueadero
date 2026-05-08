@@ -5,6 +5,8 @@ import { PlacaInput }     from '../components/shared/PlacaInput';
 import { formatFecha, formatDuracion, formatMoneda } from '../utils/format.utils';
 import { Search, Banknote, CreditCard, Smartphone, MoreHorizontal, ArrowUp, ArrowLeft, CheckCircle, Printer, Plus, AlertCircle } from 'lucide-react';
 import { TicketRecibo } from '../components/shared/TicketRecibo';
+import { fidelizacionApi } from '../api/index';
+import { Trophy, Star, Gift } from 'lucide-react';
 import s from './Operacion.module.css';
 
 const STEP = { BUSCAR: 'BUSCAR', PREVIEW: 'PREVIEW', TICKET: 'TICKET' };
@@ -27,6 +29,8 @@ export default function Salida() {
   const [ticket,     setTicket]    = useState(null);
   const [metodoPago, setMetodoPago]= useState('');
   const [pagoError,  setPagoError] = useState('');
+  const [tarjeta,    setTarjeta]   = useState(null);
+  const [canjear,    setCanjear]   = useState(false);
 
   const handlePlacaChange = (val, meta) => {
     setPlaca(val);
@@ -43,6 +47,16 @@ export default function Salida() {
       setPreview(data);
       setMetodoPago('');
       setPagoError('');
+      setCanjear(false);
+      
+      // Buscar tarjeta de fidelización
+      try {
+        const t = await fidelizacionApi.getTarjeta(placa);
+        setTarjeta(t);
+      } catch {
+        setTarjeta(null);
+      }
+
       setStep(STEP.PREVIEW);
     } catch { /* error en hook */ }
   };
@@ -52,7 +66,7 @@ export default function Salida() {
     clearError();
     setPagoError('');
     try {
-      const result = await registrarSalida({ placa, metodoPago });
+      const result = await registrarSalida({ placa, metodoPago, canjearPuntos: canjear });
       setTicket({ ...result, metodoPago });
       setStep(STEP.TICKET);
       refetch();
@@ -70,6 +84,8 @@ export default function Salida() {
     setTicket(null);
     setMetodoPago('');
     setPagoError('');
+    setTarjeta(null);
+    setCanjear(false);
     clearError();
   };
 
@@ -116,6 +132,35 @@ export default function Salida() {
                 </div>
               ))}
             </div>
+
+            {tarjeta && (
+              <div className={s.pagoSection} style={{borderColor:'var(--brand-green)', marginBottom:'var(--space-4)'}}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                  <span className={s.pagoTitle} style={{color:'var(--brand-green)', margin:0}}>
+                    <Trophy size={14} style={{display:'inline', marginRight:4}}/> Cliente {tarjeta.nivel}
+                  </span>
+                  <strong style={{color:'var(--brand-green)', fontSize:12}}>{tarjeta.puntos_acumulados} pts</strong>
+                </div>
+                
+                <label className={s.tipoOption} style={{
+                  flexDirection:'row', padding:'8px 12px', gap:12,
+                  borderColor: canjear ? 'var(--brand-green)' : 'var(--color-border-base)',
+                  background: canjear ? 'rgba(62, 207, 142, 0.05)' : 'var(--color-base)'
+                }}>
+                  <input 
+                    type="checkbox" 
+                    checked={canjear} 
+                    onChange={e => setCanjear(e.target.checked)}
+                    style={{width:18, height:18}}
+                  />
+                  <div style={{textAlign:'left', flex:1}}>
+                    <div style={{fontSize:13, fontWeight:500, color:'var(--text-primary)'}}>Canjear beneficios</div>
+                    <div style={{fontSize:11, color:'var(--text-muted)'}}>Aplica descuento de nivel en el total</div>
+                  </div>
+                  <Star size={18} color={canjear ? 'var(--brand-green)' : 'var(--text-muted)'} />
+                </label>
+              </div>
+            )}
 
             <div className={s.totalPreview}>
               <span>Cobro estimado</span>

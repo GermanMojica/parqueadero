@@ -4,9 +4,10 @@ import { useAuth }          from '../../context/AuthContext';
 import { useParqueadero }   from '../../context/ParqueaderoContext';
 import {
   LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, ScanLine, Map,
-  FileText, DollarSign, Users, LogOut, Menu, Car
+  FileText, DollarSign, Users, LogOut, Menu, Car, Trophy
 } from 'lucide-react';
 import s from './Layout.module.css';
+import SelectorSede from './SelectorSede';
 
 const NAV = [
   { section: 'Operación' },
@@ -22,6 +23,7 @@ const NAV = [
   { to: '/reportes',  label: 'Reportes',         icon: <FileText size={18} />, roles: ['ADMIN'] },
   { to: '/tarifas',   label: 'Tarifas',          icon: <DollarSign size={18} />, roles: ['ADMIN'] },
   { to: '/usuarios',  label: 'Usuarios',         icon: <Users size={18} />, roles: ['ADMIN'] },
+  { to: '/fidelizacion', label: 'Fidelización',  icon: <Trophy size={18} />, roles: ['ADMIN'] },
 ];
 
 function useClock() {
@@ -133,7 +135,9 @@ export function Layout({ children }) {
         <div className={s.sidebarFooter}>
           <div className={s.avatar}>{initiales}</div>
           <div className={s.userInfo}>
-            <span className={s.userName}>{usuario?.nombre}</span>
+            <NavLink to="/perfil" className={s.userName} onClick={() => setOpen(false)} title="Ir al Perfil">
+              {usuario?.nombre}
+            </NavLink>
             <span className={s.userRol}>{usuario?.rol}</span>
           </div>
           <button className={s.logoutBtn} onClick={() => { logout(); navigate('/login'); }} title="Cerrar sesión">
@@ -150,6 +154,7 @@ export function Layout({ children }) {
           <div className={s.topbarCenter}>
             <Car size={20} />
             <span className={s.topbarTitle}>Parqueadero</span>
+            <SelectorSede />
           </div>
           <div className={s.topbarRight}>
             <span className={s.topbarUser}>{usuario?.nombre}</span>

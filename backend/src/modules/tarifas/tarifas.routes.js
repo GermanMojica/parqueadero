@@ -4,10 +4,12 @@ const ctrl           = require('./tarifas.controller');
 const auth           = require('../../middlewares/auth.middleware');
 const { requireRol } = require('../../middlewares/roles.middleware');
 const { validate }   = require('../../middlewares/validate.middleware');
+const sedeMiddleware = require('../../middlewares/sede.middleware');
 
 const router = Router();
 
 router.use(auth);
+router.use(sedeMiddleware);
 
 router.get('/',           ctrl.getAll);                                              // todos pueden ver
 router.post('/',          requireRol('ADMIN'), validate(ctrl.createSchema), ctrl.create);

@@ -1,26 +1,37 @@
 // src/modules/reportes/reportes.service.js
 const repo     = require('./reportes.repository');
 const AppError = require('../../utils/AppError');
+const redis    = require('../../config/redis');
 
-async function getResumenFinanciero({ fechaDesde, fechaHasta }) {
-  if (!fechaDesde || !fechaHasta)
-    throw new AppError('Se requieren fechaDesde y fechaHasta (YYYY-MM-DD)', 400);
+// Función helper para caché
+async function withCache(key, ttl, fetcher) {
+  try {
+    const cached = await redis.get(key);
+    if (cached) return JSON.parse(cached);
+  } catch (err) { /* ignore cache error */ }
+
+  const data = await fetcher();
+  
+  try {
+    await redis.setex(key, ttl, JSON.stringify(data));
+  } catch (err) { /* ignore */ }
+  
+  return data;
+}
+
+async function getListado(params) {
+  return repo.obtenerListadoRegistros(params);
+}
+
+async function getResumenFinanciero({ sedeId, fechaDesde, fechaHasta }) {
+  if (!fechaDesde || !fechaHasta) throw new AppError('Se requieren fechaDesde y fechaHasta (YYYY-MM-DD)', 400);
 
   const desde = new Date(fechaDesde);
   const hasta = new Date(fechaHasta);
-  if (isNaN(desde) || isNaN(hasta))
-    throw new AppError('Formato de fecha inválido. Use YYYY-MM-DD', 400);
-  if (desde > hasta)
-    throw new AppError('fechaDesde debe ser anterior a fechaHasta', 400);
+  if (isNaN(desde) || isNaN(hasta) || desde > hasta) throw new AppError('Rango de fecha inválido', 400);
 
-  // Máximo 90 días por consulta
-  const dias = (hasta - desde) / (1000 * 60 * 60 * 24);
-  if (dias > 90)
-    throw new AppError('El rango máximo de consulta es 90 días', 400);
+  const data = await repo.resumenFinanciero({ sedeId, fechaDesde, fechaHasta });
 
-  const data = await repo.resumenFinanciero({ fechaDesde, fechaHasta });
-
-  // Totales agregados
   const totales = data.reduce((acc, row) => ({
     total_vehiculos:      acc.total_vehiculos      + Number(row.total_vehiculos),
     ingresos_brutos:      acc.ingresos_brutos      + Number(row.ingresos_brutos),
@@ -32,34 +43,25 @@ async function getResumenFinanciero({ fechaDesde, fechaHasta }) {
   return { detalle: data, totales };
 }
 
-async function getOcupacionPorHora(fecha) {
-  const f = fecha || new Date().toISOString().slice(0, 10);
-  return repo.ocupacionPorHora({ fecha: f });
+async function getOcupacionPorHora(sedeId, fechaDesde, fechaHasta) {
+  const fD = fechaDesde || new Date().toISOString().slice(0, 10);
+  const fH = fechaHasta || new Date().toISOString().slice(0, 10);
+  const cacheKey = `reporte:${sedeId}:${fD}:${fH}:ocupacion`;
+  // Cachear ocupación por 60 segundos
+  return withCache(cacheKey, 60, () => repo.ocupacionPorHora({ sedeId, fechaDesde: fD, fechaHasta: fH }));
 }
 
-async function getPorDia({ desde, hasta }) {
-  if (!desde || !hasta) throw new AppError('Se requieren fechas desde/hasta', 400);
-  return repo.porDia({ desde, hasta });
+async function getKpisHoy(sedeId) {
+  const f = new Date().toISOString().slice(0, 10);
+  const cacheKey = `reporte:${sedeId}:${f}:kpishoy`;
+  // Cachear KPIs hoy por 60 segundos (1 minuto)
+  return withCache(cacheKey, 60, () => repo.kpisHoy({ sedeId }));
 }
 
-async function getHorasPico() {
-  return repo.horasPico();
-}
-
-async function getPorTipo() {
-  return repo.porTipo();
-}
-
-async function getResumenPeriodo({ desde, hasta }) {
-  if (!desde || !hasta) throw new AppError('Se requieren fechas desde/hasta', 400);
-  return repo.resumenPeriodo({ desde, hasta });
-}
-
-async function getKpisHoy()                     { return repo.kpisHoy(); }
-async function getAlertas(horasUmbral)          { return repo.alertasTiempo(horasUmbral || 12); }
-async function getPlacasFrecuentes(limite)      { return repo.placasFrecuentes(limite || 10); }
+async function getAlertas(sedeId, horasUmbral)          { return repo.alertasTiempo({ sedeId, horasUmbral: horasUmbral || 12 }); }
+async function getPlacasFrecuentes(sedeId, limite)      { return repo.placasFrecuentes({ sedeId, limite: limite || 10 }); }
 
 module.exports = { 
-  getResumenFinanciero, getOcupacionPorHora, getKpisHoy, getAlertas, getPlacasFrecuentes,
-  getPorDia, getHorasPico, getPorTipo, getResumenPeriodo
+  getListado,
+  getResumenFinanciero, getOcupacionPorHora, getKpisHoy, getAlertas, getPlacasFrecuentes
 };

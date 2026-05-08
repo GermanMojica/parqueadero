@@ -5,6 +5,8 @@ const logger = require('./src/utils/logger');
 
 const http   = require('http');
 const socket = require('./src/config/socket');
+const reservasCron = require('./src/modules/reservas/reservas.cron');
+const notificacionesCron = require('./src/modules/notificaciones/notificaciones.cron');
 
 const PORT = env.PORT;
 const server = http.createServer(app);
@@ -14,6 +16,12 @@ socket.init(server);
 
 server.listen(PORT, () => {
   logger.info(`🚀 Servidor corriendo en puerto ${PORT} [${env.NODE_ENV}]`);
+
+  // Iniciar cron de expiración de reservas (cada 5 min)
+  reservasCron.iniciar();
+
+  // Iniciar cron de notificaciones
+  notificacionesCron.iniciar();
 });
 
 // Manejo de errores no capturados — evita que el proceso muera silenciosamente

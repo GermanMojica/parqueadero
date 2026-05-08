@@ -18,27 +18,32 @@ const SELECT_REGISTRO = `
 `;
 
 // ─── BUSCAR POR ID ────────────────────────────────────────────────────────────
-async function findById(id) {
+async function findById(id, sedeId) {
   const [rows] = await pool.execute(
-    `${SELECT_REGISTRO} WHERE r.id = ?`,
-    [id]
+    `${SELECT_REGISTRO} WHERE r.id = ? AND r.sede_id = ?`,
+    [id, sedeId]
   );
   return rows[0] || null;
 }
 
 // ─── BUSCAR REGISTRO ACTIVO POR PLACA ─────────────────────────────────────────
-async function findAbiertoPorPlaca(placa) {
+async function findAbiertoPorPlaca(placa, sedeId) {
   const [rows] = await pool.execute(
-    `${SELECT_REGISTRO} WHERE r.placa = ? AND r.estado = 'ABIERTO' LIMIT 1`,
-    [placa.toUpperCase()]
+    `${SELECT_REGISTRO} WHERE r.placa = ? AND r.estado = 'ABIERTO' AND r.sede_id = ? LIMIT 1`,
+    [placa.toUpperCase(), sedeId]
   );
   return rows[0] || null;
 }
 
 // ─── HISTORIAL (CORREGIDO) ────────────────────────────────────────────────────
-async function findAll({ estado, placa, tipoVehiculoId, fechaDesde, fechaHasta, limit, offset }) {
+async function findAll({ sedeId, estado, placa, tipoVehiculoId, fechaDesde, fechaHasta, limit, offset }) {
   const conditions = [];
   const params     = [];
+
+  if (sedeId) {
+    conditions.push("r.sede_id = ?");
+    params.push(sedeId);
+  }
 
   if (estado) {
     conditions.push("r.estado = ?");
@@ -69,16 +74,17 @@ async function findAll({ estado, placa, tipoVehiculoId, fechaDesde, fechaHasta, 
     ? `WHERE ${conditions.join(' AND ')}`
     : '';
 
-  // ✅ FIX PRINCIPAL AQUÍ (LIMIT y OFFSET como números, NO placeholders)
+  const limitParam = parseInt(limit, 10) || 50;
+  const offsetParam = parseInt(offset, 10) || 0;
+
   const [rows] = await pool.execute(
     `${SELECT_REGISTRO}
      ${where}
      ORDER BY r.hora_entrada DESC
-     LIMIT ${Number(limit)} OFFSET ${Number(offset)}`,
+     LIMIT ${limitParam} OFFSET ${offsetParam}`,
     params
   );
 
-  // Conteo total
   const [[{ total }]] = await pool.execute(
     `SELECT COUNT(*) AS total FROM registros r ${where}`,
     params
@@ -93,11 +99,11 @@ async function findAll({ estado, placa, tipoVehiculoId, fechaDesde, fechaHasta, 
 }
 
 // ─── CREAR ENTRADA ────────────────────────────────────────────────────────────
-async function createEntrada({ espacioId, placa, tipoVehiculoId, usuarioEntradaId }, conn) {
+async function createEntrada({ espacioId, placa, tipoVehiculoId, usuarioEntradaId, sedeId }, conn) {
   const [result] = await conn.execute(
-    `INSERT INTO registros (espacio_id, placa, tipo_vehiculo_id, usuario_entrada_id, estado)
-     VALUES (?, ?, ?, ?, 'ABIERTO')`,
-    [espacioId, placa.toUpperCase(), tipoVehiculoId, usuarioEntradaId]
+    `INSERT INTO registros (espacio_id, placa, tipo_vehiculo_id, usuario_entrada_id, estado, sede_id)
+     VALUES (?, ?, ?, ?, 'ABIERTO', ?)`,
+    [espacioId, placa.toUpperCase(), tipoVehiculoId, usuarioEntradaId, sedeId || 1]
   );
 
   return result.insertId;

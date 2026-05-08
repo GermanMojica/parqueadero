@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRegistros }   from '../hooks/useRegistros';
 import { useParqueadero } from '../context/ParqueaderoContext';
 import { PlacaInput }     from '../components/shared/PlacaInput';
-import { formatFecha }    from '../utils/format.utils';
-import { AlertCircle, CheckCircle, Printer, Plus, Car, Bike, Truck, ArrowDown } from 'lucide-react';
+import { AlertCircle, Printer, Plus, Car, Bike, Truck, ArrowDown, Sparkles, Trophy } from 'lucide-react';
 import { TicketRecibo } from '../components/shared/TicketRecibo';
+import { fidelizacionApi } from '../api/index';
 import s from './Operacion.module.css';
 
 const tipoIcon = (t) =>
@@ -19,6 +19,7 @@ export default function Entrada() {
   const [tipoVId,   setTipoVId]   = useState('');
   const [tipoError, setTipoError] = useState('');
   const [ticket,    setTicket]    = useState(null);
+  const [tarjeta,   setTarjeta]   = useState(null);
 
   const cuposDisponibles = (id) =>
     resumen.find(t => t.id === Number(id))?.disponibles ?? 0;
@@ -28,7 +29,6 @@ export default function Entrada() {
     setPlacaMeta(meta);
     clearError();
 
-    // Auto-selección y limpieza basada en el tipo de placa (Colombia)
     if (meta.pais === 'CO') {
       const esMotoPlaca = meta.tipoIdx === 1 || meta.tipoIdx === 2;
       const esAutoPlaca = meta.tipoIdx === 0;
@@ -44,6 +44,14 @@ export default function Entrada() {
         if (isMotoSelected) {
           setTipoVId('');
         }
+      }
+
+      if (meta.valida) {
+        fidelizacionApi.getTarjeta(val)
+          .then(t => setTarjeta(t))
+          .catch(() => setTarjeta(null));
+      } else {
+        setTarjeta(null);
       }
     }
   };
@@ -93,8 +101,8 @@ export default function Entrada() {
         {error && <div className={s.errorBox}><AlertCircle size={16}/> {error}</div>}
 
         <div className={s.formBody}>
-          <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:'var(--space-5)' }} noValidate>
-
+          <form onSubmit={handleSubmit} className={s.formWrapper} noValidate>
+            
             <div className={s.field}>
               <label className={s.label}>Placa del vehículo</label>
               <div className="input-override">
@@ -107,11 +115,33 @@ export default function Entrada() {
               </div>
             </div>
 
+            {tarjeta && (
+              <div className={s.welcomeBox} style={{
+                background: 'rgba(62, 207, 142, 0.1)', 
+                border: '1px solid var(--brand-border)',
+                borderRadius: '12px',
+                padding: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                color: 'var(--brand-green)',
+                margin: '0 0 20px 0',
+                animation: 'slideDown 0.3s ease'
+              }}>
+                <Sparkles size={18} />
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:600}}>¡Bienvenido de nuevo!</div>
+                  <div style={{fontSize:12, opacity:0.8}}>Cliente {tarjeta.nivel} con {tarjeta.puntos_acumulados} puntos.</div>
+                </div>
+                <Trophy size={20} />
+              </div>
+            )}
+
             <div className={s.field}>
               <label className={s.label}>Tipo de vehículo</label>
               <div className={s.tiposGrid}>
                 {resumen.map(tipo => {
-                  const seleccionado = tipoVId == tipo.id;
+                  const seleccionado = String(tipoVId) === String(tipo.id);
                   const esTipoMoto   = tipo.tipo_vehiculo === 'MOTO';
                   
                   let bloqueadoPorPlaca = false;
@@ -148,24 +178,19 @@ export default function Entrada() {
                   );
                 })}
               </div>
+              
               {tipoVId && (
-                <button type="button" onClick={() => { 
-                  // Solo permitimos limpiar si no está forzado por la placa
+                <button type="button" className={s.clearBtn} onClick={() => { 
                   if (esMotoPlaca && resumen.find(t => t.id == tipoVId)?.tipo_vehiculo === 'MOTO') return;
                   setTipoVId(''); 
                   setTipoError(''); 
                 }}
-                  style={{ 
-                    marginTop:6, fontFamily:'var(--font-mono)', fontSize:10, textTransform:'uppercase', letterSpacing:'1px', 
-                    color:'var(--text-muted)', background:'none', border:'none', 
-                    cursor: (esMotoPlaca && resumen.find(t => t.id == tipoVId)?.tipo_vehiculo === 'MOTO') ? 'not-allowed' : 'pointer', 
-                    padding:0, alignSelf:'flex-start',
-                    opacity: (esMotoPlaca && resumen.find(t => t.id == tipoVId)?.tipo_vehiculo === 'MOTO') ? 0.5 : 1
-                  }}>
+                  disabled={esMotoPlaca && resumen.find(t => t.id == tipoVId)?.tipo_vehiculo === 'MOTO'}
+                >
                   ✕ Cambiar tipo
                 </button>
               )}
-              {tipoError && <span className={s.fieldError}><AlertCircle size={12} style={{display:'inline', verticalAlign:'middle'}}/> {tipoError}</span>}
+              {tipoError && <span className={s.fieldError}><AlertCircle size={12} /> {tipoError}</span>}
             </div>
 
             <button

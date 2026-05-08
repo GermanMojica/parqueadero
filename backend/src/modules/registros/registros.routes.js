@@ -5,7 +5,12 @@ const auth           = require('../../middlewares/auth.middleware');
 const { requireRol } = require('../../middlewares/roles.middleware');
 const { validate }   = require('../../middlewares/validate.middleware');
 
+const sedeMiddleware = require('../../middlewares/sede.middleware');
+
 const router = Router();
+
+// Aplicar sedeMiddleware a todas las rutas
+router.use(sedeMiddleware);
 
 // Ruta pública para la vista de TV (últimos 5 movimientos)
 router.get('/public-movimientos', (req, res, next) => {

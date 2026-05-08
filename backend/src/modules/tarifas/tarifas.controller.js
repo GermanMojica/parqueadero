@@ -20,19 +20,19 @@ const updateSchema = z.object({
 });
 
 async function getAll(req, res, next) {
-  try { ok(res, await service.getAll()); } catch (e) { next(e); }
+  try { ok(res, await service.getAll(req.sedeId)); } catch (e) { next(e); }
 }
 
 async function create(req, res, next) {
-  try { created(res, await service.create(req.body)); } catch (e) { next(e); }
+  try { created(res, await service.create({ ...req.body, sedeId: req.sedeId })); } catch (e) { next(e); }
 }
 
 async function update(req, res, next) {
-  try { ok(res, await service.update(Number(req.params.id), req.body)); } catch (e) { next(e); }
+  try { ok(res, await service.update(Number(req.params.id), req.body, req.sedeId)); } catch (e) { next(e); }
 }
 
 async function deactivate(req, res, next) {
-  try { ok(res, await service.deactivate(Number(req.params.id))); } catch (e) { next(e); }
+  try { ok(res, await service.deactivate(Number(req.params.id), req.sedeId)); } catch (e) { next(e); }
 }
 
 module.exports = { getAll, create, update, deactivate, createSchema, updateSchema };

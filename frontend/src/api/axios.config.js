@@ -13,6 +13,10 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  
+  const sedeActual = sessionStorage.getItem('sedeActual');
+  if (sedeActual) config.headers['X-Sede-Id'] = sedeActual;
+
   return config;
 });
 

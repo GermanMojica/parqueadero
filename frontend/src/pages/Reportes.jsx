@@ -16,8 +16,8 @@ const SVG_LINE_HEIGHT = 150;
 export default function Reportes() {
   const [rango, setRango] = useState('semana');
   const [fechas, setFechas] = useState({ 
-    desde: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    hasta: new Date().toISOString().split('T')[0]
+    fechaDesde: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    fechaHasta: new Date().toISOString().split('T')[0]
   });
   
   const [kpis, setKpis] = useState(null);
@@ -34,16 +34,43 @@ export default function Reportes() {
     setLoading(true);
     setError('');
     try {
-      const [resKpis, resDia, resHoras, resTipo] = await Promise.all([
-        reportesApi.getResumenPeriodo(fechas),
-        reportesApi.getPorDia(fechas),
-        reportesApi.getHorasPico(),
-        reportesApi.getPorTipo()
+      const [resResumen, resHoras, resPlacas] = await Promise.all([
+        reportesApi.getResumen(fechas),
+        reportesApi.getOcupacionHora({ fechaDesde: fechas.fechaDesde, fechaHasta: fechas.fechaHasta }),
+        reportesApi.getPlacasFrecuentes(10)
       ]);
-      setKpis(resKpis || {});
-      setDataDia(resDia || []);
+
+      const detalle = resResumen.detalle || [];
+      const totales = resResumen.totales || {};
+
+      // Calcular KPIs manuales si no vienen exactos
+      const totalVehiculos = totales.total_vehiculos || 0;
+      const ingresosTotales = totales.ingresos_brutos || 0;
+      let sumMinutos = 0;
+      detalle.forEach(d => {
+        sumMinutos += Number(d.minutos_promedio || 0) * Number(d.total_vehiculos || 0);
+      });
+      const tiempoProm = totalVehiculos ? sumMinutos / totalVehiculos : 0;
+      const ingresoProm = totalVehiculos ? ingresosTotales / totalVehiculos : 0;
+
+      setKpis({
+        total_ingresos: ingresosTotales,
+        total_vehiculos: totalVehiculos,
+        tiempo_promedio: tiempoProm,
+        ingreso_promedio: ingresoProm
+      });
+
+      setDataDia(detalle);
       setDataHoras(resHoras || []);
-      setDataTipo(resTipo || []);
+
+      // Agrupar tipos de vehículo para la dona
+      const tiposMap = {};
+      detalle.forEach(d => {
+        if (!tiposMap[d.tipo_vehiculo]) tiposMap[d.tipo_vehiculo] = 0;
+        tiposMap[d.tipo_vehiculo] += Number(d.total_vehiculos);
+      });
+      setDataTipo(Object.entries(tiposMap).map(([tipo, cantidad]) => ({ tipo, cantidad })));
+
     } catch (err) {
       setError('Error al cargar datos: ' + err.message);
     } finally {
@@ -64,8 +91,8 @@ export default function Reportes() {
     
     if (val !== 'personalizado') {
       setFechas({ 
-        desde: desde.toISOString().split('T')[0], 
-        hasta: hoy.toISOString().split('T')[0] 
+        fechaDesde: desde.toISOString().split('T')[0], 
+        fechaHasta: hoy.toISOString().split('T')[0] 
       });
     }
   };
@@ -75,9 +102,9 @@ export default function Reportes() {
     
     // Preparar datos
     const dataRows = dataDia.map(d => ({
-      Fecha: d.fecha,
-      'Vehículos Atendidos': d.cantidad,
-      'Ingresos Totales': d.ingresos
+      Fecha: String(d.fecha).slice(0, 10),
+      'Vehículos Atendidos': d.total_vehiculos,
+      'Ingresos Totales': d.ingresos_brutos
     }));
 
     // Crear hoja y libro
@@ -86,7 +113,7 @@ export default function Reportes() {
     XLSX.utils.book_append_sheet(wb, ws, "Reporte_Ingresos");
 
     // Descargar
-    const fileName = `Reporte_Parqueadero_${fechas.desde}_a_${fechas.hasta}.xlsx`;
+    const fileName = `Reporte_Parqueadero_${fechas.fechaDesde}_a_${fechas.fechaHasta}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 
@@ -97,7 +124,7 @@ export default function Reportes() {
     const element = pdfRef.current;
     const opt = {
       margin:       10,
-      filename:     `Reporte_Parqueadero_${fechas.desde}_a_${fechas.hasta}.pdf`,
+      filename:     `Reporte_Parqueadero_${fechas.fechaDesde}_a_${fechas.fechaHasta}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true, logging: false },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -117,7 +144,7 @@ export default function Reportes() {
 
   const renderBarChart = (data, isPdf = false) => {
     if (!data?.length) return <p style={{color: isPdf ? '#666' : 'var(--text-muted)'}}>Sin datos</p>;
-    const maxVal = Math.max(...data.map(d => Number(d.ingresos || 0)), 1);
+    const maxVal = Math.max(...data.map(d => Number(d.ingresos_brutos || 0)), 1);
     const width = 600;
     const barWidth = (width / data.length) * 0.8;
     const gap = (width / data.length) * 0.2;
@@ -126,11 +153,11 @@ export default function Reportes() {
     return (
       <svg viewBox={`0 0 ${width} ${SVG_BAR_HEIGHT}`} style={{width: '100%', height: 'auto', overflow: 'visible'}}>
         {data.map((d, i) => {
-          const h = (Number(d.ingresos) / maxVal) * (SVG_BAR_HEIGHT - 40);
+          const h = (Number(d.ingresos_brutos || 0) / maxVal) * (SVG_BAR_HEIGHT - 40);
           return (
             <g key={i}>
               <rect x={i * (barWidth + gap)} y={SVG_BAR_HEIGHT - h - 20} width={barWidth} height={h} fill={barColor} rx="4" />
-              <text x={i * (barWidth + gap) + barWidth/2} y={SVG_BAR_HEIGHT - 5} fontSize="8" fill={isPdf ? '#666' : '#94a3b8'} textAnchor="middle">{d.fecha.slice(5)}</text>
+              <text x={i * (barWidth + gap) + barWidth/2} y={SVG_BAR_HEIGHT - 5} fontSize="10" fill={isPdf ? '#666' : '#94a3b8'} textAnchor="middle">{String(d.fecha).slice(5, 10)}</text>
             </g>
           );
         })}
@@ -140,20 +167,41 @@ export default function Reportes() {
 
   const renderLineChart = (data, isPdf = false) => {
     if (!data?.length) return <p style={{color: isPdf ? '#666' : 'var(--text-muted)'}}>Sin datos</p>;
-    const maxVal = Math.max(...data.map(d => Number(d.cantidad || 0)), 1);
+    
+    // Agrupar por hora (0 a 23) ya que la DB puede devolver múltiples filas por hora (por tipo de vehículo)
+    const entradasPorHora = Array(24).fill(0);
+    data.forEach(d => {
+      if (d.hora !== undefined) {
+        entradasPorHora[Number(d.hora)] += Number(d.entradas || 0);
+      }
+    });
+
+    // Encontrar min y max hora con datos para no dibujar un montón de ceros a los lados si no se desea,
+    // o simplemente dibujar las 24 horas. Vamos a dibujar las 24 horas para que el eje X sea consistente.
+    const maxVal = Math.max(...entradasPorHora, 1);
     const width = 600;
-    const points = data.map((d, i) => {
-      const x = (i / 23) * width;
-      const y = SVG_LINE_HEIGHT - (d.cantidad / maxVal) * (SVG_LINE_HEIGHT - 40) - 20;
+
+    // Crear puntos usando el índice (hora 0 a 23)
+    const points = entradasPorHora.map((entradas, hora) => {
+      const x = (hora / 23) * width;
+      const y = SVG_LINE_HEIGHT - (entradas / maxVal) * (SVG_LINE_HEIGHT - 40) - 20;
       return `${x},${y}`;
     }).join(' ');
 
     return (
-      <svg viewBox={`0 0 ${width} ${SVG_LINE_HEIGHT}`} style={{width: '100%', height: 'auto'}}>
+      <svg viewBox={`0 0 ${width} ${SVG_LINE_HEIGHT}`} style={{width: '100%', height: 'auto', overflow: 'visible'}}>
         <polyline fill="none" stroke="#22c55e" strokeWidth="3" points={points} />
-        {data.map((d, i) => (
-          <circle key={i} cx={(i / 23) * width} cy={SVG_LINE_HEIGHT - (d.cantidad / maxVal) * (SVG_LINE_HEIGHT - 40) - 20} r="4" fill={isPdf ? '#fff' : '#0f0f0f'} stroke="#22c55e" strokeWidth="2" />
-        ))}
+        {entradasPorHora.map((entradas, hora) => {
+          if (entradas === 0 && maxVal > 1) return null; // No dibujar círculos en los 0s a menos que todo sea 0
+          const x = (hora / 23) * width;
+          const y = SVG_LINE_HEIGHT - (entradas / maxVal) * (SVG_LINE_HEIGHT - 40) - 20;
+          return (
+            <g key={hora}>
+              <circle cx={x} cy={y} r="4" fill={isPdf ? '#fff' : '#0f0f0f'} stroke="#22c55e" strokeWidth="2" />
+              <text x={x} y={y - 10} fontSize="10" fill={isPdf ? '#666' : '#94a3b8'} textAnchor="middle">{hora}:00</text>
+            </g>
+          );
+        })}
       </svg>
     );
   };
@@ -163,7 +211,7 @@ export default function Reportes() {
     const total = data.reduce((a, b) => a + Number(b.cantidad || 0), 0);
     if (total === 0) return <p>Vacío</p>;
     let currentAngle = 0;
-    const colors = ['#22c55e', '#6366f1', '#ef4444', '#eab308'];
+    const colors = ['#22c55e', '#6366f1', '#ef4444', '#eab308', '#ec4899', '#8b5cf6'];
 
     return (
       <div style={{display: 'flex', alignItems: 'center', gap: '20px', width: '100%'}}>
@@ -285,7 +333,7 @@ export default function Reportes() {
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold' }}>PERIODO:</p>
-            <p style={{ margin: 0, fontSize: '12px', color: '#444' }}>{fechas.desde} al {fechas.hasta}</p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#444' }}>{fechas.fechaDesde} al {fechas.fechaHasta}</p>
           </div>
         </div>
 
