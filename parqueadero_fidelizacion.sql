@@ -23,7 +23,7 @@ CREATE TABLE tarjetas_fidelizacion (
 CREATE TABLE movimientos_puntos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   tarjeta_id INT NOT NULL,
-  registro_id INT NULL,
+  registro_id INT UNSIGNED NULL,
   puntos INT NOT NULL,
   tipo ENUM('ACUMULO','CANJE') NOT NULL,
   descripcion VARCHAR(255),

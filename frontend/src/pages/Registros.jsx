@@ -98,7 +98,17 @@ export default function Registros() {
             ) : data.data.map(reg => (
               <tr key={reg.id} className={reg.estado === 'ABIERTO' ? s.rowActive : ''}>
                 <td data-label="ID" className={s.idCell}>{reg.id}</td>
-                <td data-label="Placa" className={s.placaCell}>{reg.placa}</td>
+                <td data-label="Placa" className={s.placaCell}>
+                  <span 
+                    style={{ cursor: 'pointer', color: 'var(--brand-green)', borderBottom: '1px dashed transparent', transition: 'border-color 0.2s' }}
+                    onMouseEnter={e => e.target.style.borderBottomColor = 'var(--brand-green)'}
+                    onMouseLeave={e => e.target.style.borderBottomColor = 'transparent'}
+                    onClick={() => setFiltros(prev => ({ ...prev, placa: reg.placa, offset: 0 }))}
+                    title={`Ver todo el historial de ${reg.placa}`}
+                  >
+                    {reg.placa}
+                  </span>
+                </td>
                 <td data-label="Tipo">{reg.tipo_vehiculo}</td>
                 <td data-label="Espacio" className={s.espacioCell}>{reg.espacio_codigo}</td>
                 <td data-label="Entrada">{formatFecha(reg.hora_entrada)}</td>

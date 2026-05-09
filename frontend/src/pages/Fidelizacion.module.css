@@ -478,9 +478,330 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
+.editRuleBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.editRuleBtn:hover {
+  color: var(--brand-green);
+}
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.editRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.editRow input {
+  width: 80px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  color: #fff;
+  font-family: var(--font-mono);
+  text-align: right;
+  outline: none;
+}
+.editRow input:focus {
+  border-color: var(--brand-green);
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.btnSave {
+  background: var(--brand-green);
+  color: #000;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnCancel {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--color-border-base);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+.btnCancel:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* ════ PLACA LINK ════ */
+.placaLink {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--brand-green);
+  transition: all 0.2s ease;
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+}
+.placaLink:hover {
+  border-bottom-color: var(--brand-green);
+  text-shadow: 0 0 8px rgba(62, 207, 142, 0.3);
+}
+
+/* ════ HISTORIAL MODAL ════ */
+.historialOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+  padding: var(--space-6);
+}
+
+.historialModal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 640px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s ease both;
+}
+
+.historialHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-6) var(--space-8);
+  border-bottom: 1px solid var(--color-border-base);
+}
+
+.historialTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.historialSubtitle {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.historialClose {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+.historialClose:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.05);
+}
+
+.historialBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-8);
+}
+
+.historialEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-10);
+  color: var(--text-muted);
+}
+
+/* ════ TIMELINE ════ */
+.historialTimeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.timelineItem {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  position: relative;
+  animation: slideInLeft 0.4s ease both;
+}
+
+.timelineItem::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 7px;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-border-base);
+}
+
+.timelineItem:last-child::before {
+  display: none;
+}
+
+.timelineDot {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  border: 3px solid var(--color-surface);
+  position: relative;
+  z-index: 1;
+  margin-top: 2px;
+}
+
+.dotCERRADO { background: var(--brand-green); box-shadow: 0 0 6px rgba(62, 207, 142, 0.4); }
+.dotABIERTO { background: #3b82f6; box-shadow: 0 0 6px rgba(59, 130, 246, 0.4); }
+.dotANULADO { background: var(--color-crimson4); box-shadow: 0 0 6px rgba(220, 38, 38, 0.3); }
+
+.timelineContent {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  transition: border-color 0.2s;
+}
+.timelineContent:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.timelineTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.timelineDate {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.timelineEstado {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+}
+
+.estadoCERRADO { background: rgba(62, 207, 142, 0.1); color: var(--brand-green); }
+.estadoABIERTO { background: rgba(59, 130, 246, 0.1); color: #60a5fa; }
+.estadoANULADO { background: rgba(220, 38, 38, 0.1); color: #f87171; }
+
+.timelineDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.timelineDetails strong {
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-right: 2px;
+}
+
+/* ════ EDIT SELECT & INPUT (cards table) ════ */
+.editSelect, .editInput {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border-base);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  outline: none;
+}
+.editSelect:focus, .editInput:focus {
+  border-color: var(--brand-green);
+}
+
+.btnSaveCard {
+  background: var(--brand-green);
+  color: #000;
+  border: none;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btnCancelCard {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--color-border-base);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.inactiveBadge {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--color-crimson4);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.inactiveBadge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--color-crimson4);
+  border-radius: 50%;
+}
+
 @media (max-width: 900px) {
   .dashboardLayout { grid-template-columns: 1fr; }
   .heroTitle { font-size: 2.2rem; }
   .tabs { flex-wrap: wrap; border-radius: 20px; }
   .tabBtn { flex: 1; padding: 10px 12px; }
+  .historialModal { max-width: 100%; margin: 16px; }
 }

@@ -5,6 +5,13 @@ async function findAllReglas() {
   return rows;
 }
 
+async function updateRegla(id, { puntos_por_hora, descuento_pct, puntos_minimo_canje }) {
+  await pool.execute(
+    'UPDATE reglas_fidelizacion SET puntos_por_hora = ?, descuento_pct = ?, puntos_minimo_canje = ? WHERE id = ?',
+    [puntos_por_hora, descuento_pct, puntos_minimo_canje, id]
+  );
+}
+
 async function findTarjetaByPlaca(placa) {
   const [rows] = await pool.execute('SELECT * FROM tarjetas_fidelizacion WHERE placa = ? AND activo = TRUE', [placa]);
   return rows[0] || null;
@@ -28,6 +35,13 @@ async function updateTarjetaNivelYPuntos(id, puntos, nivel, conn) {
   await connection.execute(
     'UPDATE tarjetas_fidelizacion SET puntos_acumulados = ?, nivel = ? WHERE id = ?',
     [puntos, nivel, id]
+  );
+}
+
+async function updateTarjeta(id, { puntos_acumulados, nivel, activo }) {
+  await pool.execute(
+    'UPDATE tarjetas_fidelizacion SET puntos_acumulados = ?, nivel = ?, activo = ? WHERE id = ?',
+    [puntos_acumulados, nivel, activo ? 1 : 0, id]
   );
 }
 
@@ -60,5 +74,7 @@ module.exports = {
   updateTarjetaNivelYPuntos,
   createMovimiento,
   findTopClientes,
-  findAllTarjetas
+  findAllTarjetas,
+  updateRegla,
+  updateTarjeta
 };

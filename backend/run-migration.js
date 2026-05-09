@@ -3,8 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 async function runMigration() {
-  console.log('Iniciando migración de sedes (sentencia por sentencia)...');
-  const sqlPath = path.join(__dirname, '..', 'parqueadero_sedes.sql');
+  const filename = process.argv[2] || 'parqueadero_sedes.sql';
+  console.log(`Iniciando migración de ${filename} (sentencia por sentencia)...`);
+  const sqlPath = path.join(__dirname, '..', filename);
   const sql = fs.readFileSync(sqlPath, 'utf8');
 
   // Regex para separar sentencias ignorando comentarios y manejando bloques correctamente

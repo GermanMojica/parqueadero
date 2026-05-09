@@ -9,8 +9,10 @@ const router = Router();
 router.use(auth);
 
 router.get('/reglas', ctrl.getReglas);
+router.put('/reglas/:id', roles('ADMIN'), ctrl.updateRegla);
 router.post('/tarjetas', ctrl.crearTarjeta);
 router.get('/tarjetas/:idOrPlaca', ctrl.consultarTarjeta);
+router.put('/tarjetas/:id', roles('ADMIN'), ctrl.updateTarjeta);
 router.post('/canjear', ctrl.canjearPuntos);
 router.get('/dashboard', roles('ADMIN'), ctrl.getDashboard);
 

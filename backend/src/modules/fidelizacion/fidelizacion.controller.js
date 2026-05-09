@@ -6,12 +6,20 @@ async function getReglas(req, res, next) {
   try { ok(res, await service.getReglas()); } catch (e) { next(e); }
 }
 
+async function updateRegla(req, res, next) {
+  try { ok(res, await service.actualizarRegla(req.params.id, req.body)); } catch (e) { next(e); }
+}
+
 async function crearTarjeta(req, res, next) {
   try { created(res, await service.crearTarjeta(req.body.placa)); } catch (e) { next(e); }
 }
 
 async function consultarTarjeta(req, res, next) {
   try { ok(res, await service.consultarPorCodigoOPlaca(req.params.idOrPlaca)); } catch (e) { next(e); }
+}
+
+async function updateTarjeta(req, res, next) {
+  try { ok(res, await service.actualizarTarjeta(req.params.id, req.body)); } catch (e) { next(e); }
 }
 
 async function canjearPuntos(req, res, next) {
@@ -30,5 +38,7 @@ module.exports = {
   crearTarjeta,
   consultarTarjeta,
   canjearPuntos,
-  getDashboard
+  getDashboard,
+  updateRegla,
+  updateTarjeta
 };

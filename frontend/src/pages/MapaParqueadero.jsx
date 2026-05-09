@@ -5,16 +5,24 @@ import { useParqueadero } from '../context/ParqueaderoContext';
 import { formatFecha, formatDuracion, formatMoneda } from '../utils/format.utils';
 import { 
   Map as MapIcon, RefreshCw, Loader2, Bike, Truck, Car,
-  Banknote, CreditCard, Smartphone, MoreHorizontal, CheckCircle, Printer
+  Banknote, CreditCard, Smartphone, MoreHorizontal, CheckCircle, Printer, Award
 } from 'lucide-react';
-import { ticketsApi } from '../api/index';
+import { ticketsApi, fidelizacionApi } from '../api/index';
 import { TicketRecibo } from '../components/shared/TicketRecibo';
+import { Trophy, Star } from 'lucide-react';
 import s from './MapaParqueadero.module.css';
 
 const ESTADO_CFG = {
   DISPONIBLE:    { label: 'Libre',      color: 'var(--brand-green)' },
   OCUPADO:       { label: 'Ocupado',    color: 'var(--color-crimson4)' },
   MANTENIMIENTO: { label: 'Mant.',      color: 'var(--color-yellowA7)' },
+};
+
+const FIDELIZACION_COLORS = { 
+  BRONCE: '#cd7f32', 
+  PLATA: '#9ca3af', 
+  ORO: '#fbbf24', 
+  PLATINO: '#38bdf8' 
 };
 
 const TIPO_ICON = { 
@@ -44,7 +52,13 @@ function EspacioCell({ espacio, onClick }) {
       className={`${s.espacio} ${s[espacio.estado?.toLowerCase() ?? 'disponible']}`}
       onClick={() => onClick(espacio)}
       title={`${espacio.codigo} — ${espacio.estado}${espacio.placa ? ' · ' + espacio.placa : ''}`}
+      style={{ position: 'relative' }}
     >
+      {espacio.fidelizacion_nivel && (
+        <span style={{ position: 'absolute', top: 4, right: 4, color: FIDELIZACION_COLORS[espacio.fidelizacion_nivel] }} title={`Fidelización: ${espacio.fidelizacion_nivel}`}>
+          <Award size={14} fill="currentColor" />
+        </span>
+      )}
       <span className={s.espacioTipo}>{tipoIcon}</span>
       <span className={s.espacioCodigo}>{espacio.codigo}</span>
       {espacio.estado === 'OCUPADO' && espacio.placa ? (
@@ -70,6 +84,8 @@ export default function MapaParqueadero() {
   const [salidaOk,   setSalidaOk]   = useState(null);
   const [filtro,     setFiltro]     = useState('TODOS');
   const [entranceTicket, setEntranceTicket] = useState(null);
+  const [tarjeta,    setTarjeta]    = useState(null);
+  const [canjear,    setCanjear]    = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -87,9 +103,16 @@ export default function MapaParqueadero() {
     setSalidaOk(null);
     if (espacio.estado === 'OCUPADO' && espacio.placa) {
       setLoadPreview(true);
+      setCanjear(false);
       try {
         const data = await previewSalida(espacio.placa);
         setPreview(data);
+        try {
+          const t = await fidelizacionApi.getTarjeta(espacio.placa);
+          setTarjeta(t);
+        } catch {
+          setTarjeta(null);
+        }
       } catch { /* no bloquea el modal */ }
       finally { setLoadPreview(false); }
     }
@@ -99,7 +122,7 @@ export default function MapaParqueadero() {
     if (!metodoPago) { setPagoError('Selecciona el método de pago'); return; }
     setPagoError('');
     try {
-      const result = await registrarSalida({ placa: seleccion.placa, metodoPago });
+      const result = await registrarSalida({ placa: seleccion.placa, metodoPago, canjearPuntos: canjear });
       setSalidaOk(result);
       refetch();
       cargar();
@@ -139,6 +162,8 @@ export default function MapaParqueadero() {
     setMetodoPago('');
     setPagoError('');
     setEntranceTicket(null);
+    setTarjeta(null);
+    setCanjear(false);
   };
 
   const grupos = espacios.reduce((acc, e) => {
@@ -282,6 +307,14 @@ export default function MapaParqueadero() {
                   {seleccion.estado === 'OCUPADO' && (
                     <>
                       <div className={s.modalRow}><span>Placa</span><strong>{seleccion.placa ?? '—'}</strong></div>
+                      {seleccion.fidelizacion_nivel && (
+                         <div className={s.modalRow}>
+                           <span>Fidelización</span>
+                           <strong style={{ color: FIDELIZACION_COLORS[seleccion.fidelizacion_nivel], display: 'flex', alignItems: 'center', gap: '4px' }}>
+                             <Award size={16} fill="currentColor" /> {seleccion.fidelizacion_nivel}
+                           </strong>
+                         </div>
+                      )}
                       {loadPreview && <div className={s.modalRow}><span colSpan={2} style={{display:'flex', alignItems:'center', gap:'8px'}}><Loader2 size={16} className="animate-spin"/> Calculando cobro...</span></div>}
                       {preview && (
                         <>
@@ -289,6 +322,32 @@ export default function MapaParqueadero() {
                           <div className={s.modalRow}><span>Tiempo aprox.</span><strong>{formatDuracion(preview.calculo?.minutosTotales)}</strong></div>
                           <div className={s.modalRow}><span>Cobro estimado</span><strong style={{ color:'var(--brand-link)', fontSize:'1.05rem' }}>{formatMoneda(preview.calculo?.totalEstimado)}</strong></div>
                         </>
+                      )}
+
+                      {tarjeta && (
+                        <div className={s.pagoSection} style={{borderColor:'var(--brand-green)', marginTop:'var(--space-3)', padding:'var(--space-2)', borderRadius:'8px', border:'1px solid var(--brand-green)'}}>
+                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                            <span className={s.pagoTitle} style={{color:'var(--brand-green)', margin:0, display:'flex', alignItems:'center'}}>
+                              <Trophy size={14} style={{marginRight:4}}/> Cliente {tarjeta.nivel}
+                            </span>
+                            <strong style={{color:'var(--brand-green)', fontSize:12}}>{tarjeta.puntos_acumulados} pts</strong>
+                          </div>
+                          <label style={{
+                            display:'flex', flexDirection:'row', alignItems:'center', padding:'8px', gap:12, borderRadius:'6px', cursor:'pointer',
+                            background: canjear ? 'rgba(62, 207, 142, 0.1)' : 'transparent'
+                          }}>
+                            <input 
+                              type="checkbox" 
+                              checked={canjear} 
+                              onChange={e => setCanjear(e.target.checked)}
+                              style={{width:16, height:16}}
+                            />
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:13, fontWeight:500, color:'var(--text-primary)'}}>Canjear beneficios</div>
+                            </div>
+                            <Star size={16} color={canjear ? 'var(--brand-green)' : 'var(--text-muted)'} />
+                          </label>
+                        </div>
                       )}
 
                       <div style={{ paddingTop: 'var(--space-3)' }}>

@@ -6,10 +6,11 @@ async function findAll(sedeId, conn = null) {
   const [rows] = await db.execute(
     `SELECT e.id, e.codigo, e.estado,
             tv.nombre AS tipo_vehiculo, tv.id AS tipo_vehiculo_id,
-            r.placa
+            r.placa, tf.nivel AS fidelizacion_nivel
      FROM espacios e
      JOIN tipos_vehiculo tv ON tv.id = e.tipo_vehiculo_id
      LEFT JOIN registros r  ON r.espacio_id = e.id AND r.estado = 'ABIERTO'
+     LEFT JOIN tarjetas_fidelizacion tf ON tf.placa = r.placa AND tf.activo = TRUE
      WHERE e.sede_id = ?
      ORDER BY tv.nombre, e.codigo`,
     [sedeId]

@@ -67,7 +67,7 @@ export default function Salida() {
     setPagoError('');
     try {
       const result = await registrarSalida({ placa, metodoPago, canjearPuntos: canjear });
-      setTicket({ ...result, metodoPago });
+      setTicket(result.ticket ? { ...result.ticket, metodoPago } : { ...result, metodoPago });
       setStep(STEP.TICKET);
       refetch();
     } catch {

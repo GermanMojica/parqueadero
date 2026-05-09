@@ -74,8 +74,10 @@ export const sedesApi = {
 
 export const fidelizacionApi = {
   getReglas:    ()      => api.get('/fidelizacion/reglas').then(r => r.data.data),
+  updateRegla:  (id, data) => api.put(`/fidelizacion/reglas/${id}`, data).then(r => r.data.data),
   crearTarjeta: (placa) => api.post('/fidelizacion/tarjetas', { placa }).then(r => r.data.data),
   getTarjeta:   (id)    => api.get(`/fidelizacion/tarjetas/${id}`).then(r => r.data.data),
+  updateTarjeta:(id, data) => api.put(`/fidelizacion/tarjetas/${id}`, data).then(r => r.data.data),
   canjear:      (data)  => api.post('/fidelizacion/canjear', data).then(r => r.data.data),
   getDashboard: ()      => api.get('/fidelizacion/dashboard').then(r => r.data.data),
 };

@@ -10,6 +10,11 @@ async function getReglas() {
   return repo.findAllReglas();
 }
 
+async function actualizarRegla(id, data) {
+  await repo.updateRegla(id, data);
+  return { message: 'Regla actualizada correctamente' };
+}
+
 async function determinarNivel(puntos, reglas) {
   // Las reglas vienen ordenadas por puntos_minimo_canje ASC (BRONCE, PLATA, ORO, PLATINO)
   let nivelAsignado = 'BRONCE';
@@ -37,6 +42,13 @@ async function consultarPorCodigoOPlaca(idOrPlaca) {
   if (!tarjeta) tarjeta = await repo.findTarjetaByPlaca(val);
   if (!tarjeta) throw new AppError('Tarjeta no encontrada', 404);
   return tarjeta;
+}
+
+async function actualizarTarjeta(id, data) {
+  // If we wanted, we could add logic to ensure the level matches the points, 
+  // but if the admin manually changes it, we should respect their input.
+  await repo.updateTarjeta(id, data);
+  return { message: 'Tarjeta actualizada correctamente' };
 }
 
 async function calcularPuntosGanados(horasFacturadas, nivelActual) {
@@ -115,5 +127,7 @@ module.exports = {
   calcularPuntosGanados,
   procesarSalida,
   aplicarCanje,
-  getDashboardData
+  getDashboardData,
+  actualizarRegla,
+  actualizarTarjeta
 };
